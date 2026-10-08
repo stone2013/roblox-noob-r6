@@ -1,20 +1,19 @@
 {
-  "name": "Roblox Noob R6",
-  "short_name": "Noob R6",
-  "description": "Roblox 风格 3D 布娃娃物理沙盒",
-  "id": "/roblox-noob-r6/",
-  "start_url": "/roblox-noob-r6/",
-  "scope": "/roblox-noob-r6/",
-  "display": "standalone",
-  "orientation": "landscape",
-  "background_color": "#202c39",
-  "theme_color": "#202c39",
-  "icons": [
-    {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ]
+ "name":"Noob 骨折模拟器 · Break Lab",
+ "short_name":"骨折实验场",
+ "description":"六块积木、一场重力实验。三种卡通摔落赛道，离线横屏物理游戏。",
+ "lang":"zh-CN",
+ "id":"/roblox-noob-r6/",
+ "start_url":"./?v=4.0.0",
+ "scope":"./",
+ "display":"standalone",
+ "orientation":"landscape",
+ "background_color":"#e1ecde",
+ "theme_color":"#142839",
+ "categories":["games"],
+ "icons":[
+  {"src":"./icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+  {"src":"./icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+  {"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}
+ ]
 }

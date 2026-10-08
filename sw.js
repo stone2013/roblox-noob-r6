@@ -1,1 +1,19 @@
-const CACHE='noob-r6-v1';const CORE=['./','./index.html','./manifest.webmanifest','./icon.svg'];self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(hit=>hit||fetch(e.request).then(res=>{if(res.ok&&new URL(e.request.url).origin===self.location.origin){let copy=res.clone();caches.open(CACHE).then(c=>c.put(e.request,copy))}return res}).catch(()=>caches.match('./index.html'))))})
+/* Scope-limited PWA upgrade. No third-party resources or global cache deletion. */
+const VERSION='4.0.0',CACHE='noob-r6-break-v'+VERSION;
+const CORE=['./','./index.html','./engine.js','./game.js','./engine.js?v='+VERSION,'./game.js?v='+VERSION,'./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png'];
+self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(CACHE);await cache.addAll(CORE);await self.skipWaiting()})()));
+self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const name of await caches.keys())if(name.startsWith('noob-r6-')&&name!==CACHE)await caches.delete(name);await self.clients.claim()})()));
+self.addEventListener('message',event=>{if(event.data==='SKIP_WAITING')self.skipWaiting()});
+self.addEventListener('fetch',event=>{
+ const request=event.request,url=new URL(request.url),scope=new URL(self.registration.scope);
+ if(request.method!=='GET'||url.origin!==scope.origin||!url.pathname.startsWith(scope.pathname))return;
+ event.respondWith((async()=>{const cache=await caches.open(CACHE);
+  if(request.mode==='navigate'){
+   try{const response=await fetch(request,{cache:'no-store'});if(response.ok){await cache.put(new URL('./index.html',scope).href,response.clone());return response}throw Error('Unavailable')}
+   catch{return await cache.match('./index.html')||new Response('请先联网打开一次游戏以完成离线缓存。',{status:503,headers:{'Content-Type':'text/plain;charset=utf-8'}})}
+  }
+  const saved=await cache.match(request);if(saved)return saved;
+  try{const response=await fetch(request);if(response.ok)await cache.put(request,response.clone());return response}
+  catch{return new Response('',{status:503})}
+ })());
+});
