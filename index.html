@@ -9,21 +9,183 @@
 
 /* SHOP v4.2 */
 .shop{position:fixed;z-index:55;inset:0;background:#0d2239b9;display:flex;align-items:center;justify-content:center;padding:16px;pointer-events:auto}.shop.hidden{display:none}.shop-card{width:min(650px,95vw);max-height:85vh;overflow:auto;background:#f8fcff;border:3px solid #fff;border-radius:22px;padding:20px;color:#193347;box-shadow:0 18px 60px #081f39a0}.shop-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.shop-top h2{margin:0;font-size:23px}.shop-balance{font-weight:900;color:#b66521;background:#fff0d7;padding:10px;border-radius:12px}.shop-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:14px}.shop-item{background:#e9f3f9;border:1px solid #d0e4ef;border-radius:14px;padding:12px;text-align:center}.shop-item .emoji{font-size:27px}.shop-item strong{display:block;margin:5px 0}.shop-item button{background:#236de3;color:white;border:0;border-radius:9px;padding:9px;width:100%;font-weight:800}.shop-item button:disabled{background:#a4b7c2}.shop-item small{display:block;color:#647887;margin:4px}.shop-note{font-size:12px;color:#647887}@media(max-width:530px){.shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.shop-card{padding:12px}.shop-item{padding:8px}}
+
+/* R6 UI v4.9.2 — Roblox-inspired, independently branded landscape HUD */
+:root{color-scheme:dark;--ink:#f5f7fa;--muted:#b5bdc7;--paper:rgba(24,27,33,.86);--line:#ffffff28;--shadow:0 6px 22px #0005;--orange:#26a2ff;--yellow:#fff}
+html,body{background:#14191e;color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+#hud{padding:0}
+button,select{font-family:inherit}
+button:focus-visible,select:focus-visible{outline:2px solid #fff;outline-offset:2px}
+button:active{transform:scale(.94)}
+.panel{color:#fff;background:rgba(23,26,31,.80);border:1px solid #ffffff2d;box-shadow:0 3px 16px #0005;backdrop-filter:blur(8px);border-radius:11px}
+.top{position:absolute;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));top:max(9px,env(safe-area-inset-top));height:48px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.rb-menu{width:45px;height:45px;flex:none;display:grid;place-items:center;background:#1d2229db;border:1px solid #ffffff38;border-radius:11px;color:#fff;font-size:25px;font-weight:800;box-shadow:0 3px 12px #0004}
+.brand{display:flex;align-items:center;flex:0 0 auto;padding:4px 9px 4px 5px;gap:7px;box-shadow:none;background:#13171dc2}
+.brand-mark{background:#e9edf2;color:#161c26;border-radius:8px;width:32px;height:32px;transform:rotate(-8deg);box-shadow:none;font-size:19px;font-weight:1000;line-height:1}
+.brand strong{font-size:12px;letter-spacing:.05em;white-space:nowrap}
+.brand small{font-size:8px;letter-spacing:1.5px;color:#bdc4cc}
+.stats{margin:0 auto;flex:0 1 300px;min-width:0;max-width:310px;padding:5px 3px;align-self:center;justify-content:space-around;box-shadow:0 3px 14px #0004}
+.stat{min-width:0;flex:1;padding:1px 6px;border-right:1px solid #ffffff20}
+.stat small{font-size:9px;letter-spacing:.02em;color:#b9c3ca;margin:0 0 2px}
+.stat b{font-size:20px;font-weight:900;color:#fff;white-space:nowrap}
+.stat b small{font-size:9px;color:#b9c3ca}
+.stat.score b{color:#f8e693}
+.nav{display:flex;gap:7px;align-items:center;flex:none}
+.pill{background:#1b2229e8;color:#f3f7fb;border:1px solid #ffffff30;border-radius:10px;box-shadow:0 3px 10px #0004;min-height:42px;padding:9px 12px;font-size:11px;font-weight:750}
+.pill.enabled{background:#244c3be8;color:#d1ffe1;border-color:#55c98755}
+.pill.off{background:#613d3cf0;color:#ffdfcf;border-color:#f1876855}
+.route{left:max(12px,env(safe-area-inset-left));top:69px;width:192px;padding:12px}
+.route h3{font-size:14px;color:#fff;margin:0 0 4px}
+.route p{color:#bfccd7;font-size:10px;line-height:1.5}
+.eyebrow{color:#aab7c4;font-size:9px;letter-spacing:1.6px}
+.route select{background:#323b47;color:#fff;border:1px solid #ffffff32;border-radius:8px;padding:8px 9px;font-size:11px}
+.record{color:#bdc6d2;font-size:10px;border-top-color:#ffffff26;padding-top:8px;margin-top:8px}
+.record b{color:#f6d888}
+.injury{top:69px;right:max(12px,env(safe-area-inset-right));width:132px;padding:10px;box-shadow:0 3px 14px #0004}
+.injury-title{color:#fff;font-size:11px}
+.bodymap{transform:scale(.74);transform-origin:top center;height:101px;margin:10px auto 0}
+.limb{background:#8899a6;border:2px solid #c3d0d8;border-radius:2px}
+#injuryText{font-size:10px;color:#e4eaf0}
+.injury .legend{color:#b5c5cf;font-size:8px}
+.notice{top:70px;background:#1d2530ac;color:#f6f9fd;border:1px solid #ffffff2d;border-radius:7px;max-width:40%;font-size:10px;padding:5px 9px;text-shadow:0 1px 2px #0008;box-shadow:0 2px 6px #0003}
+#impact{text-shadow:0 2px 8px #000a,0 0 12px #1c2830}
+#impact strong{color:#ffe76d;font-size:42px}
+#impact span{color:white}
+.footer{max-width:min(492px,calc(100vw - 258px));width:max-content;display:flex;gap:4px;left:50%;bottom:max(12px,env(safe-area-inset-bottom));padding:5px 6px;transform:translateX(-50%);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;box-shadow:0 4px 22px #0008;border-radius:12px;background:#10141ad9;border:1px solid #ffffff38;overscroll-behavior-x:contain;touch-action:pan-x}
+.footer::-webkit-scrollbar{display:none}
+.tool{position:relative;flex:0 0 53px;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 3px!important;background:#262d39;color:#f6f8fa;border:1px solid #ffffff25;border-radius:8px;font-size:10px!important;box-shadow:inset 0 -3px #0003}
+.hot-icon{font-size:20px;line-height:22px;font-weight:800}
+.hot-label{font-size:9px;line-height:11px;white-space:nowrap;color:#dce4ee;font-weight:700}
+.tool.active,.tool:focus-visible{background:#4979ad;color:white;box-shadow:inset 0 0 0 2px #c2e3ff}
+.wallet-number{position:absolute;right:1px;top:1px;background:#e7c45f;color:#1c2530;border-radius:5px;padding:0 3px;font-size:8px;min-width:14px}
+.controls{width:112px;height:112px;left:max(24px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom));border:2px solid #ffffff26;background:#20252e50;box-shadow:inset 0 0 0 19px #ffffff11,0 3px 12px #0005}
+.controls:before{content:'+';font-size:62px;color:#ffffff22}
+.knob{width:48px;height:48px;background:#d6dce5cf;border:2px solid #ffffff45;box-shadow:0 3px 8px #0006}
+.move-label{bottom:-14px;color:#f3f6f9;text-shadow:0 1px 4px #000c;font-size:9px}
+.action{right:max(17px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));flex-direction:column-reverse;align-items:flex-end;gap:10px}
+.jump{width:68px;height:68px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;border:2px solid #ffffff77;border-radius:50%;background:#3e5166be;color:white;box-shadow:inset 0 -4px #0003,0 4px 14px #0006;backdrop-filter:blur(5px);font-size:28px;font-weight:850}
+.jump small{font-size:9px;font-weight:800}
+.launch{min-width:130px;min-height:54px;border-radius:10px;padding:8px 14px;background:#168cde;color:#fff;border:1px solid #b1e5ff86;box-shadow:inset 0 -4px #054877bb,0 4px 14px #0007;font-size:13px;font-weight:850;letter-spacing:0}
+.launch small{margin-top:2px;color:#d9f0ff;font-size:8px}
+.version{bottom:2px;left:10px;transform:none;text-shadow:0 2px 4px #000c;color:#e0e5e9b0;font-size:8px;max-width:200px}
+.props{bottom:81px;max-width:min(450px,calc(100vw - 220px));padding:9px;gap:4px;background:#161b23ed}
+.props button{background:#353e4b;color:#edf3f8;border:1px solid #ffffff20;font-size:10px;min-width:45px;padding:8px}
+.props button.selected{background:#426c99;color:white}
+.props p{color:#d0d9df}
+#toast{bottom:90px;background:#171c26e9;color:#fff;border:1px solid #ffffff2a;box-shadow:0 5px 20px #0006}
+.modal-back{background:#0b0e17cc;backdrop-filter:blur(7px)}
+.modal{background:#242a35;color:#fff;border:1px solid #586374;border-radius:15px;box-shadow:0 20px 65px #000a}
+.modal p,.modal .subtitle{color:#b8c8d4}
+.modal h1,.modal h2{color:#fff}
+.modal .badge{background:#3f526b;color:#def1ff}
+.chips span{color:#d3e0ea;border-color:#586675}
+.close{background:#414c5e;color:#fff}
+.setting{border-color:#ffffff22}
+.setting button{background:#435267;color:white}
+.result-grid{background:#333f4e}
+.result-grid div{color:#e5e9ef}
+.result-grid b{color:white}
+.result-score{color:#ffe17f}
+#portrait{background:#191f28e8;color:#fff}
+#loading{background:#1b242f;color:#fff}
+#loading p{color:#c7d3df}
+.spinner{background:#455668}
+.spinner:after{background:#65b4ed}
+.shop{background:#080e19da;backdrop-filter:blur(7px)}
+.shop-card{background:#242c38;border:1px solid #697789;color:#fff;box-shadow:0 20px 70px #000b}
+.shop-top h2{color:#fff}
+.shop-balance{color:#ffe5a4;background:#455064}
+.shop-item{background:#303b4a;border:1px solid #5b6a79}
+.shop-item small,.shop-note{color:#c6d2dc}
+.shop-item button{background:#2473bf;color:#fff}
+.shop-item button:disabled{background:#536375;color:#bfcbd4}
+@media (max-height:540px) and (orientation:landscape){
+.top{top:7px;height:42px}
+.rb-menu{width:42px;height:42px;font-size:23px}
+.brand{padding:3px 7px 3px 4px}
+.brand strong{font-size:11px}
+.brand small{font-size:7px}
+.brand-mark{width:29px;height:29px}
+.stats{max-width:260px;padding:4px 1px}
+.stat b{font-size:18px}
+.stat small{font-size:8px}
+.pill{min-height:39px;padding:7px 9px;font-size:10px}
+.route{top:58px;width:172px;padding:9px}
+.route p{display:none}
+.route h3{font-size:12px}
+.route select{padding:7px;font-size:10px;margin-top:7px}
+.injury{top:58px;width:120px;padding:7px}
+.bodymap{transform:scale(.63);height:86px;margin-top:6px}
+.injury .legend{display:none}
+.notice{top:58px;font-size:9px}
+.controls{width:93px;height:93px;bottom:20px}
+.knob{width:41px;height:41px}
+.footer{bottom:12px;max-width:min(474px,calc(100vw - 250px))}
+.tool{flex-basis:49px;min-height:48px}
+.hot-icon{font-size:18px;line-height:20px}
+.hot-label{font-size:8px}
+.action{bottom:17px;gap:8px}
+.jump{width:56px;height:56px;font-size:24px}
+.launch{min-height:43px;min-width:122px;padding:7px;font-size:12px}
+.version{font-size:7px}
+}
+@media (max-width:740px) and (orientation:landscape){
+.top{gap:5px}
+.brand strong{max-width:65px;overflow:hidden;text-overflow:ellipsis}
+.brand small{display:none}
+.stats{flex:0 1 175px}
+.stat b{font-size:15px}
+.stat:last-child{display:none}
+.nav{gap:3px}
+.pill{padding:8px 6px;font-size:9px}
+.footer{max-width:calc(100vw - 220px)}
+.controls{width:82px;height:82px;left:max(15px,env(safe-area-inset-left))}
+.action{right:max(10px,env(safe-area-inset-right))}
+.jump{width:51px;height:51px}
+.launch{min-width:108px;font-size:11px}
+.route{width:142px}
+.injury{width:104px}
+.notice{display:none}
+}
+@media (orientation:portrait){
+.top{left:8px;right:8px;gap:5px}
+.rb-menu{width:39px;height:39px}
+.brand{display:none}
+.stats{position:static;transform:none;min-width:0;max-width:170px;flex:1}
+.stat:last-child{display:none}
+.route{top:90px;width:145px}
+.injury{top:90px;width:110px}
+.footer{bottom:165px;max-width:calc(100vw - 20px)}
+.action{bottom:18px;flex-direction:row;align-items:center}
+.jump{display:flex!important}
+.controls{bottom:20px}
+.version{bottom:140px}
+}
+
 </style></head><body>
 <canvas id="viewport" aria-label="Noob 骨折模拟器三维场景"></canvas>
 <div id="loading"><div><strong>NOOB / BREAK LAB</strong><p id="loadText">正在准备积木山谷…</p><div class="spinner"></div></div></div>
-<div id="hud"><div class="top"><div class="brand panel"><div class="brand-mark">▧</div><div><strong>骨折模拟器</strong><small>NOOB / BREAK LAB</small></div></div><div class="stats panel"><div class="stat score"><small>本次得分</small><b id="score">0</b></div><div class="stat"><small>骨折点</small><b id="bones">0<small> / 48</small></b></div><div class="stat"><small>最高碰撞速度</small><b id="speed">0<small> m/s</small></b></div></div><div class="nav"><button class="pill enabled" id="strength">💪 力气 ON</button><button class="pill" id="camera">◉ 第三人称</button><button class="pill square" id="menu" aria-label="设置菜单">☰</button></div></div>
+<div id="hud"><div class="top"><button class="rb-menu" id="menu" aria-label="打开游戏菜单" title="菜单">☰</button><div class="brand panel"><div class="brand-mark" aria-hidden="true">N</div><div><strong>骨折模拟器</strong><small>NOOB / BREAK LAB</small></div></div><div class="stats panel"><div class="stat score"><small>本次得分</small><b id="score">0</b></div><div class="stat"><small>骨折点</small><b id="bones">0<small> / 48</small></b></div><div class="stat"><small>最高碰撞速度</small><b id="speed">0<small> m/s</small></b></div></div><div class="nav"><button class="pill enabled" id="strength">💪 力气 ON</button><button class="pill" id="camera">◉ 第三人称</button></div></div>
 <section class="route panel"><div class="eyebrow">CHOOSE YOUR DROP</div><h3 id="routeName">01 / 高台自由落体</h3><p id="routeDesc">从 16 米高台落下，挑战一次重击。</p><select id="routeSelect" aria-label="选择赛道"><option value="0">01　高台 / 16 m　⌄</option><option value="1">02　翻滚阶梯 / 20 m</option><option value="2">03　山谷滑坡 / 24 m</option><option value="3">04　雪山之巅 / 42 m ⛰️</option></select><div class="record"><span>♜ 本地最佳</span><b id="best">0</b></div></section>
 <div id="notice" class="notice">六块积木 · 一场重力实验</div><section class="injury panel"><div class="injury-title">身体检测 <span class="dot"></span></div><div class="bodymap" aria-label="受伤部位示意"><div class="limb" data-part="0" title="头部"></div><div class="limb" data-part="1" title="躯干"></div><div class="limb" data-part="2" title="左臂"></div><div class="limb" data-part="3" title="右臂"></div><div class="limb" data-part="4" title="左腿"></div><div class="limb" data-part="5" title="右腿"></div></div><div id="injuryText">完好无损</div><div class="legend"><span><i style="background:#ffd76e"></i>受伤</span><span><i style="background:#ff9b72"></i>骨折</span></div></section>
 <div id="impact"><strong>+ 0</strong><span>重击</span></div><div id="crosshair"></div><div id="portrait" class="panel">↶ 横屏，获得完整试验视野</div>
-<div id="joystick" class="controls" aria-label="移动摇杆"><div id="knob" class="knob"></div><div class="move-label">移动 / WASD</div></div>
-<div class="footer panel"><button class="tool" id="retry">↺ 回到起点</button><button class="tool" id="heal">✚ 治疗</button><button class="tool" id="slow">◷ 慢动作</button><button class="tool" id="propsToggle">▦ 道具</button><button class="tool" id="vehicleSpawn">🛒 矿车</button><button class="tool" id="vehicleRide">🚗 乘坐/下车</button><button class="tool" id="replayStart">🎬 回放</button><button class="tool" id="shopToggle">🛒 商店 <span id="walletMini">0</span></button></div><div class="action"><button class="jump" id="jump" aria-label="跳跃">↑</button><button id="launch" class="launch">开始摔落<small>DROP TEST · F</small></button></div><div class="version">V4.9.1 · 卡通游戏数值 / 非人体医学模拟</div>
+<div id="joystick" class="controls" aria-label="移动摇杆"><div id="knob" class="knob"></div><div class="move-label">移动</div></div>
+<div class="footer panel" role="toolbar" aria-label="快捷栏">
+<button class="tool" id="retry" title="回到起点" aria-label="回到起点"><span class="hot-icon">↺</span><span class="hot-label">重置</span></button>
+<button class="tool" id="heal" title="治疗" aria-label="治疗"><span class="hot-icon">✚</span><span class="hot-label">治疗</span></button>
+<button class="tool" id="slow" title="慢动作" aria-label="慢动作"><span class="hot-icon">◷</span><span class="hot-label">慢速</span></button>
+<button class="tool" id="propsToggle" title="背包与道具" aria-label="背包与道具"><span class="hot-icon">▦</span><span class="hot-label">背包</span></button>
+<button class="tool" id="vehicleSpawn" title="生成矿车" aria-label="生成矿车"><span class="hot-icon">🛒</span><span class="hot-label">矿车</span></button>
+<button class="tool" id="vehicleRide" title="乘坐或下车" aria-label="乘坐或下车"><span class="hot-icon">🚗</span><span class="hot-label">乘坐</span></button>
+<button class="tool" id="replayStart" title="观看回放" aria-label="观看回放"><span class="hot-icon">🎬</span><span class="hot-label">回放</span></button>
+<button class="tool" id="shopToggle" title="商店" aria-label="商店"><span class="hot-icon">🛍</span><span class="hot-label">商店</span><span class="wallet-number" id="walletMini">0</span></button>
+</div><div class="action"><button class="jump" id="jump" aria-label="跳跃"><span aria-hidden="true">↑</span><small>跳跃</small></button><button id="launch" class="launch">开始摔落<small>DROP TEST · F</small></button></div><div class="version">V4.9.2 · 卡通游戏数值 / 非人体医学模拟</div>
 <div class="props panel hidden" id="propsPanel"><button data-prop="grab" class="selected">🎥 镜头</button><button data-prop="bomb">💣 炸弹 🔒</button><button data-prop="spring">🔒 🌀 弹簧</button><button data-prop="box">🔒 📦 木箱</button><button data-prop="ball">🔒 🎳 球</button><button data-prop="balloon">🔒 🎈 气球</button><button id="clearProps">清除</button><p>选择后点击场景；镜头模式可滑动视角，使用道具会切换为沙盒，不计挑战纪录。</p></div><div id="toast" role="status"></div></div>
 <section id="shopPanel" class="shop hidden" role="dialog" aria-modal="true" aria-label="道具商店"><div class="shop-card"><div class="shop-top"><h2>🛒 道具商店</h2><div class="shop-balance">⭐ <span id="walletBalance">0</span> 积分</div><button id="shopClose" aria-label="关闭商店">✕</button></div><p class="shop-note">挑战结束获得积分，永久解锁道具。沙盒挑战不奖励积分。</p><div id="shopGrid" class="shop-grid"></div></div></section><div id="intro" class="modal-back hidden"><section class="modal"><span class="badge">NEW / GRAVITY PLAYGROUND</span><h1>六块积木。<br>一场重力实验。</h1><div class="subtitle">NOOB 骨折模拟器</div><p>选择高台、阶梯或滑坡，让 Noob 自由翻滚。<br>碰撞越猛烈，伤害和得分越高；停稳后查看报告。</p><div class="chips"><span>3 个摔落赛道</span><span>6 个受伤区域</span><span>无血腥表现</span></div><button id="start" class="launch wide">进入试验场 →</button><p style="text-align:center;font-size:10px">移动：WASD / 左摇杆　·　视角：拖动空白处</p></section></div>
 <div id="settings" class="modal-back hidden"><section class="modal"><button id="closeMenu" class="close" aria-label="关闭">×</button><div class="eyebrow">LAB SETTINGS</div><h2>你的试验场</h2><div class="setting"><span>碰撞音效</span><button id="sound">关闭</button></div><div class="setting"><span>画质 / 阴影</span><button id="quality">精致</button></div><div class="setting"><span>横屏全屏</span><button id="fullscreen">尝试全屏</button></div><div class="setting"><span>PWA 缓存</span><button id="update">检查更新</button></div><p>R 切换力气 · C 切换视角 · F 开始摔落<br>空格跳跃 / 摔落 · Shift 奔跑 · 鼠标滚轮缩放<br>骨折点是游戏计分，不对应真实人体骨骼。</p><p id="offlineState">所有游戏代码均在本站，无外部引擎加载。</p></section></div>
 <div id="results" class="modal-back hidden"><section class="modal"><button id="closeResult" class="close" aria-label="关闭报告">×</button><span class="badge" id="resultBadge">DROP REPORT</span><h2>这次，重力赢了。</h2><div class="result-score" id="finalScore">0</div><div class="result-grid"><div>骨折点<b id="finalBones">0 / 48</b></div><div>最大碰撞<b id="finalSpeed">0 m/s</b></div><div>翻滚时间<b id="finalTime">0 s</b></div></div><p id="resultParts" class="result-detail"></p><button id="resultRetry" class="launch wide">治疗 & 再来一次 ↺</button><p id="recordNote" style="text-align:center;font-size:10px"></p></section></div>
 <script>window.addEventListener('error',e=>{let t=document.getElementById('loadText');if(t&&!document.getElementById('loading').classList.contains('hidden'))t.textContent='启动失败：'+e.message});</script>
-<script type="module" src="./game.js?v=4.9.1"></script>
+<script type="module" src="./game.js?v=4.9.2"></script>
 <script>
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
 let had=!!navigator.serviceWorker.controller,reloading=false;
