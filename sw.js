@@ -1,5 +1,5 @@
 /* Scope-limited PWA upgrade. No third-party resources or global cache deletion. */
-const VERSION='4.9.0',CACHE='noob-r6-break-v'+VERSION;
+const VERSION='4.9.1',CACHE='noob-r6-break-v'+VERSION;
 const CORE=['./','./index.html','./engine.js','./game.js','./features49.js','./engine.js?v='+VERSION,'./game.js?v='+VERSION,'./features49.js?v='+VERSION,'./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(CACHE);await cache.addAll(CORE);await self.skipWaiting()})()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const name of await caches.keys())if(name.startsWith('noob-r6-')&&name!==CACHE)await caches.delete(name);await self.clients.claim()})()));
