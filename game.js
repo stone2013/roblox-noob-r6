@@ -1,4 +1,4 @@
-import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.2.0';
+import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.3.0';
 const $=id=>document.getElementById(id),show=(id,on)=>$(id).classList.toggle('hidden',!on),R=new Renderer($('viewport')),P=new Physics();
 const rad=d=>d*Math.PI/180,colors={yellow:'#ffdb39',blue:'#287ac5',green:'#73b343'},names=['头部','躯干','左臂','右臂','左腿','右腿'],caps=[6,18,5,5,7,7];
 const routes=[{name:'01 / 高台自由落体',desc:'从 16 米高台落下，挑战一次重击。',x:0,h:16},{name:'02 / 翻滚阶梯',desc:'20 级长阶梯，连续翻滚与多次碰撞。',x:-28,h:20},{name:'03 / 山谷滑坡',desc:'24 米滑坡与凸起路障，滑行后翻滚。',x:28,h:24}];
@@ -20,10 +20,28 @@ for(let i=0;i<20;i++){let h=19-i,z=-1-i*1.7;solid([-28,h/2,z],[8.4,h,1.7],i%2?'#
 const slopeQ=Q.axis([1,0,0],-Math.atan2(22,34));solid([28,11.8,-16],[9,1.0,40.5],'#b8cbd0',slopeQ);for(let x of [23.35,32.65])solid([x,12.2,-16],[.4,1.1,40.5],'#799b9b',slopeQ);for(let z of [-8,-18,-28]){let y=12.4+(z+16)*22/34;solid([28,y,z],[7.8,.6,.75],'#dca373',slopeQ)}
 for(let c of routes){let z=c.x===0?-7:-40;let pad=decoration([c.x,.03,z-7],[13,.05,18],'#b8cab1',Q.id(),'box',false);pad.studs=1;for(let side of [-1,1])for(let k=0;k<4;k++){let x=c.x+side*6.8,zz=z-k*4;decoration([x,.1,zz],[.7,.2,.7],'#536e65');decoration([x,.5,zz],[.44,.8,.44],'#efa369');decoration([x,.6,zz],[.46,.14,.46],'#fff1d1')};stripe(c.x,.09,z+1,12)}
 solid([-1,1.2,-7],[5,2.4,1.2],'#ce8e65');solid([2.2,.5,-13],[2.5,1,2.4],'#d5aa73');solid([-3,.8,-18],[2.3,1.6,2.2],'#abbdaf');solid([28,1,-40],[8,2,1.5],'#d3a675');
+
+// v4.3 scenic pass: lightweight low-poly scenery placed outside active drop lanes.
+function scenicTree(x,z,height=3.5){let y=height/2;decoration([x,y,z],[.55,height,.55],'#95633d');decoration([x,height+.45,z],[2.8,1.8,2.7],'#328f53');decoration([x,height+1.5,z],[2.0,1.25,2.0],'#4db46b');decoration([x-.4,height+2.15,z-.3],[1.15,.7,1.15],'#83ca7c')}
+function scenicLamp(x,z){decoration([x,1.8,z],[.18,3.6,.18],'#486a72');decoration([x,3.65,z],[1.2,.16,.52],'#365766');let light=decoration([x,3.51,z],[.9,.1,.4],'#ffe7a1');light.unlit=.7}
+for(let i=0;i<30;i++){let x=(random()-.5)*112,z=-70+random()*94;if(Math.abs(x)<39&&z>-51&&z<13)continue;scenicTree(x,z,2.5+random()*2.2)}
+for(let i=0;i<12;i++){let x=-56+i*10;decoration([x,.2,19],[5,.35,3.6],i%2?'#adc9bd':'#c7d9c6');decoration([x,.4,19],[3.8,.1,2.5],'#a4c1ad')}
+for(let c of routes){let x=c.x;scenicLamp(x-3.4,9);scenicLamp(x+3.4,9);
+decoration([x,c.h+1.4,9],[4.3,1.05,.22],'#294b63');decoration([x,c.h+1.4,9.14],[3.85,.64,.07],'#e8f1d8',Q.id(),'box',false);
+for(let side of [-1,1])for(let j=0;j<3;j++){decoration([x+side*5.3,.28,-4-j*6],[.55,.55,.55],'#f6b363');decoration([x+side*5.3,.58,-4-j*6],[.58,.13,.58],'#f9df9b')}}
+for(let x of [-44,44])for(let z of [-36,-18,0]){decoration([x,.7,z],[2.1,1.4,2.1],'#b8c4b6');decoration([x,1.47,z],[2.2,.15,2.2],'#d9e4d3')}
 const layout=[[0,3.34,0],[0,2.2,0],[-.94,2.2,0],[.94,2.2,0],[-.32,.76,0],[.32,.76,0]],sizes=[[.84,.84,.84],[1.26,1.4,.7],[.6,1.4,.7],[.6,1.4,.7],[.61,1.48,.7],[.61,1.48,.7]],masses=[1.8,5,1.5,1.5,2.1,2.1];
 const dolls=layout.map((p,i)=>{let b=P.add(new Body(p,sizes[i],masses[i]));b.group='doll';b.part=i;b.mesh=decoration(p,sizes[i],i===1?colors.blue:i>3?colors.green:colors.yellow);b.mesh.shadow=true;b.base=[...b.mesh.c];b.damage=0;b.lastHit=-99;b.ornaments=[];b.active=false;return b});
 function detail(i,p,s,c,rot=Q.id(),crack=false){let b=dolls[i],m=decoration([0,0,0],s,c);m.cast=false;b.ornaments.push({m,p,q:rot,crack});return m}
 for(let x of [-.16,.16])detail(0,[x,.08,.427],[.08,.11,.022],'#23343a');for(let i=0;i<10;i++)detail(0,[-.245+i*.054,-.095-.085*Math.sin(i/9*Math.PI),.427],[.055,.028,.018],'#23343a',Q.axis([0,0,1],Math.cos(i/9*Math.PI)*-.45));
+
+// v4.3 character detailing: decorative-only meshes attached to the existing six rigid bodies.
+for(let side of [-1,1]){detail(0,[side*.39,.07,0],[.055,.55,.55],'#e9bd27');detail(1,[side*.60,0,0],[.045,1.22,.68],'#165c9c')}
+detail(1,[0,.68,.02],[1.12,.07,.67],'#3b8bd5');
+detail(1,[0,-.67,.02],[1.14,.075,.67],'#155c9e');
+for(let arm of [2,3]){detail(arm,[0,-.61,.01],[.59,.11,.69],'#e7c52a');detail(arm,[0,.60,0],[.59,.09,.68],'#ffe879')}
+for(let leg of [4,5]){detail(leg,[0,-.67,.06],[.6,.13,.82],'#327e2d');detail(leg,[0,.62,0],[.6,.10,.7],'#5da33a')}
+for(let x of [-.14,.14])detail(0,[x,.08,.445],[.035,.035,.014],'#f8f9dd');
 for(let i=0;i<6;i++){for(let k=0;k<3;k++)for(let side of [-1,1])detail(i,[(k-1)*.075,(k-1)*.16,side*(sizes[i][2]/2+.01)],[.035,.24,.012],'#fff0d2',Q.axis([0,0,1],k%2?.65:-.45),true)}
 P.joint(dolls[1],dolls[0],[0,.72,0],[0,-.42,0],rad(35),rad(35));P.joint(dolls[1],dolls[2],[-.63,.5,0],[.31,.5,0],rad(115),rad(50));P.joint(dolls[1],dolls[3],[.63,.5,0],[-.31,.5,0],rad(115),rad(50));P.joint(dolls[1],dolls[4],[-.32,-.7,0],[0,.74,0],rad(78),rad(38));P.joint(dolls[1],dolls[5],[.32,-.7,0],[0,.74,0],rad(78),rad(38));
 const fractures=b=>Math.min(caps[b.part],Math.floor(b.damage*caps[b.part]/100)),totalBones=()=>dolls.reduce((s,b)=>s+fractures(b),0);
