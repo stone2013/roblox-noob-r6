@@ -25,22 +25,48 @@ function collide(a,b){if(V.len(V.sub(a.p,b.p))>a.radius+b.radius+.03)return null
  let local=Q.rot(Q.inv(b.q),V.sub(a.p,b.p)),near=local.map((x,i)=>clamp(x,-b.h[i],b.h[i])),delta=V.sub(local,near),len=V.len(delta);if(len>a.h[0])return null;let n;if(len<1e-8){let gaps=local.map((x,i)=>b.h[i]-Math.abs(x)),i=gaps.indexOf(Math.min(...gaps));n=[0,0,0];n[i]=Math.sign(local[i])||1;len=-gaps[i]}else n=V.mul(delta,1/len);n=Q.rot(b.q,n);return{n,p:V.sub(a.p,V.mul(n,a.h[0])),depth:a.h[0]-len}}
  let aa=AX.map(v=>Q.rot(a.q,v)),bb=AX.map(v=>Q.rot(b.q,v)),axes=[...aa,...bb];for(let x of aa)for(let y of bb){let z=V.cross(x,y);if(V.len(z)>.015)axes.push(V.norm(z))}let delta=V.sub(a.p,b.p),depth=1e10,normal;for(let n of axes){let ra=aa.reduce((s,v,i)=>s+Math.abs(V.dot(v,n))*a.h[i],0),rb=bb.reduce((s,v,i)=>s+Math.abs(V.dot(v,n))*b.h[i],0),dist=V.dot(delta,n),overlap=ra+rb-Math.abs(dist);if(overlap<=0)return null;if(overlap<depth){depth=overlap;normal=dist>=0?n:V.mul(n,-1)}}let p=supportPoint(a,normal,true);return{n:normal,p,depth}}
 export class Physics{
- constructor(){this.bodies=[];this.joints=[];this.drag=null;this.time=0;this.onImpact=()=>{};this.gravity=22;this.iterations=17}
+ constructor(){this.bodies=[];this.joints=[];this.drag=null;this.time=0;this.onImpact=()=>{};this.gravity=22;this.iterations=16;this.contactSlop=.003;this.lastPairCount=0}
  add(b){this.bodies.push(b);return b}
  remove(b){this.bodies=this.bodies.filter(v=>v!==b)}
  joint(a,b,la,lb,cone,twist){let j={a,b,la,lb,cone,twist,baseCone:cone,baseTwist:twist};this.joints.push(j);return j}
  step(dt){this.time+=dt;let active=this.bodies.filter(b=>b.active),contacts=new Map();
  for(let b of active){b.oldP=[...b.p];b.oldQ=[...b.q];b.v[1]-=this.gravity*dt;b.v=V.mul(b.v,Math.exp(-.1*dt));b.w=V.mul(b.w,Math.exp(-1.05*dt));let speed=V.len(b.v);if(speed>58)b.v=V.mul(b.v,58/speed);if(V.len(b.w)>25)b.w=V.mul(V.norm(b.w),25);b.p=V.add(b.p,V.mul(b.v,dt));b.q=Q.step(b.q,V.mul(b.w,dt))}
- const pairs=[];for(let a of active)for(let b of this.bodies){if(a===b||b.active&&b.id<a.id||a.group==='doll'&&b.group==='doll'||!b.active&&b.mass>0)continue;if(V.len(V.sub(a.p,b.p))<a.radius+b.radius+.15)pairs.push([a,b])}
- const resolve=(a,b,c,key)=>{let n=c.n,p=c.p,ra=V.sub(p,a.p),rb=b?V.sub(p,b.p):[0,0,0],k=weight(a,ra,n)+(b?weight(b,rb,n):0);if(k<1e-8)return;let speed=-V.dot(V.sub(a.velocity(ra),b?b.velocity(rb):[0,0,0]),n);if(!contacts.has(key)||speed>contacts.get(key).speed)contacts.set(key,{a,b,n,p,speed});let j=V.mul(n,Math.max(0,c.depth-.001)*.78/k);shift(a,j,ra);if(b)shift(b,V.mul(j,-1),rb)};
+ // Broad phase: prune static colliders by their precomputed world-space AABBs.
+// Rotated cliffs use conservative bounds, so legitimate contacts are not skipped.
+const staticBodies=this.bodies.filter(b=>!b.active&&b.mass===0);
+const dynamicBodies=active;
+const bound=b=>{const ax=Q.rot(b.q,[b.h[0],0,0]),ay=Q.rot(b.q,[0,b.h[1],0]),az=Q.rot(b.q,[0,0,b.h[2]]);
+ return [0,1,2].map(i=>Math.abs(ax[i])+Math.abs(ay[i])+Math.abs(az[i]))};
+const statics=staticBodies.map(b=>({b,ext:bound(b)}));
+const pairs=[];
+for(let a of dynamicBodies){
+ const ea=bound(a),sweep=[Math.abs(a.v[0])*dt+.12,Math.abs(a.v[1])*dt+.12,Math.abs(a.v[2])*dt+.12];
+ for(let entry of statics){const b=entry.b,eb=entry.ext;
+ if(Math.abs(a.p[0]-b.p[0])>ea[0]+eb[0]+sweep[0]||
+    Math.abs(a.p[1]-b.p[1])>ea[1]+eb[1]+sweep[1]||
+    Math.abs(a.p[2]-b.p[2])>ea[2]+eb[2]+sweep[2])continue;
+ pairs.push([a,b])}
+ for(let b of dynamicBodies){if(b.id<=a.id||a.group==='doll'&&b.group==='doll')continue;
+ if(Math.abs(a.p[0]-b.p[0])>ea[0]+b.radius+.12||
+    Math.abs(a.p[1]-b.p[1])>ea[1]+b.radius+.12||
+    Math.abs(a.p[2]-b.p[2])>ea[2]+b.radius+.12)continue;
+ pairs.push([a,b])}
+}
+this.lastPairCount=pairs.length;
+ const resolve=(a,b,c,key)=>{let n=c.n,p=c.p,ra=V.sub(p,a.p),rb=b?V.sub(p,b.p):[0,0,0],k=weight(a,ra,n)+(b?weight(b,rb,n):0);if(k<1e-8)return;let speed=-V.dot(V.sub(a.velocity(ra),b?b.velocity(rb):[0,0,0]),n);if(!contacts.has(key)||speed>contacts.get(key).speed)contacts.set(key,{a,b,n,p,speed});let j=V.mul(n,Math.max(0,c.depth-this.contactSlop)*.78/k);shift(a,j,ra);if(b)shift(b,V.mul(j,-1),rb)};
  for(let k=0;k<this.iterations;k++){
   for(let j of this.joints){solvePoint(j.a,j.b,j.la,j.lb);limitJoint(j)}
   if(this.drag)solvePoint(this.drag.b,null,this.drag.local,null,this.drag.target,1.8);
   for(let a of active){let vs=a.shape==='sphere'?[V.add(a.p,[0,-a.h[0],0])]:a.vertices();for(let i=0;i<vs.length;i++)if(vs[i][1]<0)resolve(a,null,{n:[0,1,0],p:vs[i],depth:-vs[i][1]},a.id+':ground:'+i)}
   for(let [a,b] of pairs){let c=collide(a,b);if(c)resolve(a,b,c,a.id+':'+b.id)}
  }
- for(let b of active){b.v=V.mul(V.sub(b.p,b.oldP),1/dt);b.w=V.mul(Q.delta(b.q,b.oldQ),1/dt)}
- for(let c of contacts.values()){let {a,b,p,n}=c,ra=V.sub(p,a.p),rb=b?V.sub(p,b.p):[0,0,0],rv=V.sub(a.velocity(ra),b?b.velocity(rb):[0,0,0]),vn=V.dot(rv,n),k=weight(a,ra,n)+(b?weight(b,rb,n):0);if(k>0){let normalImpulse=Math.max(0,-vn/k);let j=V.mul(n,normalImpulse);a.impulse(j,ra);if(b)b.impulse(V.mul(j,-1),rb);let tangent=V.sub(rv,V.mul(n,vn)),tl=V.len(tangent);if(tl>1e-6){let t=V.mul(tangent,1/tl),kt=weight(a,ra,t)+(b?weight(b,rb,t):0),fr=Math.min(tl/kt,(normalImpulse+Math.max(0,c.speed)/k+this.gravity*dt/k)*.38);j=V.mul(t,-fr);a.impulse(j,ra);if(b)b.impulse(V.mul(j,-1),rb)}}if(c.speed>4.5)this.onImpact(c)}
+ for(let b of active){b.v=V.mul(V.sub(b.p,b.oldP),1/dt);b.w=V.mul(Q.delta(b.q,b.oldQ),1/dt);
+ // Prevent numerical spikes when a high-speed ragdoll hits multiple cliff faces.
+ const speed=V.len(b.v),spin=V.len(b.w);
+ if(speed>60)b.v=V.mul(b.v,60/speed);
+ if(spin>22)b.w=V.mul(b.w,22/spin);
+}
+ for(let c of contacts.values()){let {a,b,p,n}=c,ra=V.sub(p,a.p),rb=b?V.sub(p,b.p):[0,0,0],rv=V.sub(a.velocity(ra),b?b.velocity(rb):[0,0,0]),vn=V.dot(rv,n),k=weight(a,ra,n)+(b?weight(b,rb,n):0);if(k>0){let normalImpulse=Math.max(0,-vn/k);let j=V.mul(n,normalImpulse);a.impulse(j,ra);if(b)b.impulse(V.mul(j,-1),rb);let tangent=V.sub(rv,V.mul(n,vn)),tl=V.len(tangent);if(tl>1e-6){let t=V.mul(tangent,1/tl),kt=weight(a,ra,t)+(b?weight(b,rb,t):0),fr=Math.min(tl/Math.max(kt,1e-8),(normalImpulse+Math.max(0,c.speed)/k+this.gravity*dt/k)*Math.min(.8,Math.max(.15,Math.sqrt((a.friction??.5)*(b?.friction??.5)))));j=V.mul(t,-fr);a.impulse(j,ra);if(b)b.impulse(V.mul(j,-1),rb)}}if(c.speed>4.5)this.onImpact(c)}
  }
  error(){return Math.max(0,...this.joints.map(j=>V.len(V.sub(j.a.world(j.la),j.b.world(j.lb)))))}
 }
