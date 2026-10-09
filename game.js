@@ -1,5 +1,5 @@
-import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.9.1';
-import {createStructures,createVehicles,createReplay} from './features49.js?v=4.9.1';
+import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.9.2';
+import {createStructures,createVehicles,createReplay} from './features49.js?v=4.9.2';
 const $=id=>document.getElementById(id),show=(id,on)=>$(id).classList.toggle('hidden',!on),R=new Renderer($('viewport')),P=new Physics();
 const rad=d=>d*Math.PI/180,colors={yellow:'#ffdb39',blue:'#287ac5',green:'#73b343'},names=['头部','躯干','左臂','右臂','左腿','右腿'],caps=[6,18,5,5,7,7];
 const routes=[{name:'01 / 高台自由落体',desc:'从 16 米高台落下，挑战一次重击。',x:0,h:16},{name:'02 / 翻滚阶梯',desc:'20 级长阶梯，连续翻滚与多次碰撞。',x:-28,h:20},{name:'03 / 山谷滑坡',desc:'24 米滑坡与凸起路障，滑行后翻滚。',x:28,h:24},{name:'04 / 雪山之巅',desc:'42 米雪山：悬崖、积木雪坡、岩石障碍与连续跌落。',x:55,h:42}];
