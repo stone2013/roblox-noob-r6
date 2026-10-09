@@ -25,14 +25,14 @@ function collide(a,b){if(V.len(V.sub(a.p,b.p))>a.radius+b.radius+.03)return null
  let local=Q.rot(Q.inv(b.q),V.sub(a.p,b.p)),near=local.map((x,i)=>clamp(x,-b.h[i],b.h[i])),delta=V.sub(local,near),len=V.len(delta);if(len>a.h[0])return null;let n;if(len<1e-8){let gaps=local.map((x,i)=>b.h[i]-Math.abs(x)),i=gaps.indexOf(Math.min(...gaps));n=[0,0,0];n[i]=Math.sign(local[i])||1;len=-gaps[i]}else n=V.mul(delta,1/len);n=Q.rot(b.q,n);return{n,p:V.sub(a.p,V.mul(n,a.h[0])),depth:a.h[0]-len}}
  let aa=AX.map(v=>Q.rot(a.q,v)),bb=AX.map(v=>Q.rot(b.q,v)),axes=[...aa,...bb];for(let x of aa)for(let y of bb){let z=V.cross(x,y);if(V.len(z)>.015)axes.push(V.norm(z))}let delta=V.sub(a.p,b.p),depth=1e10,normal;for(let n of axes){let ra=aa.reduce((s,v,i)=>s+Math.abs(V.dot(v,n))*a.h[i],0),rb=bb.reduce((s,v,i)=>s+Math.abs(V.dot(v,n))*b.h[i],0),dist=V.dot(delta,n),overlap=ra+rb-Math.abs(dist);if(overlap<=0)return null;if(overlap<depth){depth=overlap;normal=dist>=0?n:V.mul(n,-1)}}let p=supportPoint(a,normal,true);return{n:normal,p,depth}}
 export class Physics{
- constructor(){this.bodies=[];this.joints=[];this.drag=null;this.time=0;this.onImpact=()=>{};this.gravity=22;this.iterations=14}
+ constructor(){this.bodies=[];this.joints=[];this.drag=null;this.time=0;this.onImpact=()=>{};this.gravity=22;this.iterations=17}
  add(b){this.bodies.push(b);return b}
  remove(b){this.bodies=this.bodies.filter(v=>v!==b)}
  joint(a,b,la,lb,cone,twist){let j={a,b,la,lb,cone,twist,baseCone:cone,baseTwist:twist};this.joints.push(j);return j}
  step(dt){this.time+=dt;let active=this.bodies.filter(b=>b.active),contacts=new Map();
- for(let b of active){b.oldP=[...b.p];b.oldQ=[...b.q];b.v[1]-=this.gravity*dt;b.v=V.mul(b.v,Math.exp(-.1*dt));b.w=V.mul(b.w,Math.exp(-.7*dt));let speed=V.len(b.v);if(speed>58)b.v=V.mul(b.v,58/speed);if(V.len(b.w)>25)b.w=V.mul(V.norm(b.w),25);b.p=V.add(b.p,V.mul(b.v,dt));b.q=Q.step(b.q,V.mul(b.w,dt))}
+ for(let b of active){b.oldP=[...b.p];b.oldQ=[...b.q];b.v[1]-=this.gravity*dt;b.v=V.mul(b.v,Math.exp(-.1*dt));b.w=V.mul(b.w,Math.exp(-1.05*dt));let speed=V.len(b.v);if(speed>58)b.v=V.mul(b.v,58/speed);if(V.len(b.w)>25)b.w=V.mul(V.norm(b.w),25);b.p=V.add(b.p,V.mul(b.v,dt));b.q=Q.step(b.q,V.mul(b.w,dt))}
  const pairs=[];for(let a of active)for(let b of this.bodies){if(a===b||b.active&&b.id<a.id||a.group==='doll'&&b.group==='doll'||!b.active&&b.mass>0)continue;if(V.len(V.sub(a.p,b.p))<a.radius+b.radius+.15)pairs.push([a,b])}
- const resolve=(a,b,c,key)=>{let n=c.n,p=c.p,ra=V.sub(p,a.p),rb=b?V.sub(p,b.p):[0,0,0],k=weight(a,ra,n)+(b?weight(b,rb,n):0);if(k<1e-8)return;let speed=-V.dot(V.sub(a.velocity(ra),b?b.velocity(rb):[0,0,0]),n);if(!contacts.has(key)||speed>contacts.get(key).speed)contacts.set(key,{a,b,n,p,speed});let j=V.mul(n,Math.max(0,c.depth-.001)*.85/k);shift(a,j,ra);if(b)shift(b,V.mul(j,-1),rb)};
+ const resolve=(a,b,c,key)=>{let n=c.n,p=c.p,ra=V.sub(p,a.p),rb=b?V.sub(p,b.p):[0,0,0],k=weight(a,ra,n)+(b?weight(b,rb,n):0);if(k<1e-8)return;let speed=-V.dot(V.sub(a.velocity(ra),b?b.velocity(rb):[0,0,0]),n);if(!contacts.has(key)||speed>contacts.get(key).speed)contacts.set(key,{a,b,n,p,speed});let j=V.mul(n,Math.max(0,c.depth-.001)*.78/k);shift(a,j,ra);if(b)shift(b,V.mul(j,-1),rb)};
  for(let k=0;k<this.iterations;k++){
   for(let j of this.joints){solvePoint(j.a,j.b,j.la,j.lb);limitJoint(j)}
   if(this.drag)solvePoint(this.drag.b,null,this.drag.local,null,this.drag.target,1.8);
