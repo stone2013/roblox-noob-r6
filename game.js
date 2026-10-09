@@ -1,4 +1,4 @@
-import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.7.0';
+import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.8.0';
 const $=id=>document.getElementById(id),show=(id,on)=>$(id).classList.toggle('hidden',!on),R=new Renderer($('viewport')),P=new Physics();
 const rad=d=>d*Math.PI/180,colors={yellow:'#ffdb39',blue:'#287ac5',green:'#73b343'},names=['头部','躯干','左臂','右臂','左腿','右腿'],caps=[6,18,5,5,7,7];
 const routes=[{name:'01 / 高台自由落体',desc:'从 16 米高台落下，挑战一次重击。',x:0,h:16},{name:'02 / 翻滚阶梯',desc:'20 级长阶梯，连续翻滚与多次碰撞。',x:-28,h:20},{name:'03 / 山谷滑坡',desc:'24 米滑坡与凸起路障，滑行后翻滚。',x:28,h:24},{name:'04 / 雪山之巅',desc:'42 米雪山：悬崖、积木雪坡、岩石障碍与连续跌落。',x:55,h:42}];
@@ -34,7 +34,62 @@ for(let i=0;i<16;i++){
  solid([x,ht/2,z],[14,ht,14],i%3?'#91aba0':'#a5bcb1');
  decoration([x,ht+.4,z],[11,.8,11],'#b9cbb4',Q.id(),'box',false);
 }
-for(let i=0;i<26;i++){let x=(random()-.5)*122,z=(random()-.5)*110-20;if(Math.abs(x)<43&&z>-49&&z<13)continue;let h=2.6+random()*2;decoration([x,h*.5,z],[.55,h,.55],'#a78056');decoration([x,h+.75,z],[2.9,2.4,2.7],i%2?'#5d9e66':'#6dab74',Q.axis([0,1,0],.2));decoration([x-.15,h+2.0,z],[1.7,1.0,1.7],'#89bd79')}
+
+// Destructible trees: trunk is a static collider until a strong impact shatters it.
+// Decorative canopy stays attached visually and disappears into capped fragments.
+const breakableTrees=[],treeFragments=[];
+function makeBreakableTree(x,z,height=3.5){
+ const trunk=solid([x,height*.5,z],[.65,height,.65],'#95633d',Q.id(),'tree');
+ const canopy=[
+ decoration([x,height+.45,z],[2.8,1.8,2.7],'#328f53'),
+ decoration([x,height+1.5,z],[2.0,1.25,2.0],'#4db46b'),
+ decoration([x-.4,height+2.15,z-.3],[1.15,.7,1.15],'#83ca7c')
+ ];
+ const tree={x,z,height,trunk,canopy,broken:false};
+ trunk.tree=tree;breakableTrees.push(tree);return tree;
+}
+function shatterTree(tree,force=12){
+ if(!tree||tree.broken)return;
+ tree.broken=true;P.remove(tree.trunk);R.remove(tree.trunk.mesh);
+ for(let m of tree.canopy)R.remove(m);
+ const pieces=[
+ [[0,tree.height*.22,0],[.55,tree.height*.44,.55],'#99683e'],
+ [[0,tree.height*.72,0],[.50,tree.height*.45,.50],'#a77647'],
+ [[-.55,tree.height+.6,0],[1.2,.9,1.1],'#348f50'],
+ [[.55,tree.height+1.1,.25],[1.2,1,1.2],'#48a760'],
+ [[0,tree.height+1.9,-.3],[1.0,.75,1.0],'#75bd73']
+ ];
+ for(let i=0;i<pieces.length;i++){
+  let [offset,size,color]=pieces[i],p=[tree.x+offset[0],offset[1],tree.z+offset[2]];
+  let m=decoration(p,size,color),v=[(random()-.5)*force*.7,3+random()*force*.3,(random()-.5)*force*.7];
+  treeFragments.push({m,p,v,spin:(random()-.5)*4,life:7});
+ }
+ while(treeFragments.length>90){R.remove(treeFragments.shift().m)}
+ sparks([tree.x,tree.height*.6,tree.z],10);
+ toast('🌳 树木撞碎了！');
+}
+function updateTreeFragments(dt){
+ for(let i=treeFragments.length-1;i>=0;i--){
+  let f=treeFragments[i];f.life-=dt;f.v[1]-=P.gravity*dt;
+  f.p=V.add(f.p,V.mul(f.v,dt));
+  if(f.p[1]<.25){f.p[1]=.25;f.v[1]=Math.max(0,-f.v[1]*.2);f.v[0]*=.8;f.v[2]*=.8}
+  f.m.p=[...f.p];f.m.q=Q.step(f.m.q,[dt*f.spin,dt*.6,dt*.4]);
+  if(f.life<=0){R.remove(f.m);treeFragments.splice(i,1)}
+ }
+}
+function restoreTrees(){
+ for(let tree of breakableTrees){if(!tree.broken)continue;
+  tree.broken=false;const trunk=solid([tree.x,tree.height*.5,tree.z],[.65,tree.height,.65],'#95633d',Q.id(),'tree');
+  trunk.tree=tree;tree.trunk=trunk;
+  tree.canopy=[
+   decoration([tree.x,tree.height+.45,tree.z],[2.8,1.8,2.7],'#328f53'),
+   decoration([tree.x,tree.height+1.5,tree.z],[2,1.25,2],'#4db46b'),
+   decoration([tree.x-.4,tree.height+2.15,tree.z-.3],[1.15,.7,1.15],'#83ca7c')
+  ];
+ }
+ for(let f of treeFragments)R.remove(f.m);treeFragments.length=0;
+}
+for(let i=0;i<26;i++){let x=(random()-.5)*122,z=(random()-.5)*110-20;if(Math.abs(x)<43&&z>-49&&z<13)continue;let h=2.6+random()*2;makeBreakableTree(x,z,h)}
 for(let i=0;i<9;i++){let x=(i-4)*20,z=-55+(i%3)*37,y=36+random()*7;let group=[];for(let k=0;k<3;k++){let m=decoration([x+k*3,y+(k===1?1.0:0),z],[5,2.0+(k===1?1.1:0),3.4],'#f4faf4',Q.id(),'box',false);group.push(m)}clouds.push(group)}
 function stripe(x,y,z,w=9){for(let i=0;i<12;i++)decoration([x-w/2+i*w/12,y,z],[w/24,.035,.6],i%2?'#344f53':'#ffd46f',Q.axis([0,1,0],-.35),'box',false)}
 for(let c of routes){let {x,h}=c;solid([x,h-.6,5],[10,1.2,8],'#e4eadf');let deck=decoration([x,h+.01,5],[9.8,.035,7.8],'#517575',Q.id(),'box',false);deck.studs=1;stripe(x,h+.04,1.4);for(let a of [-4.45,4.45]){solid([x+a,h+1,5],[.18,.22,7.5],'#d4e2db');for(let z of [2.3,5.5,8.4])solid([x+a,h+.48,z],[.16,1.1,.16],'#729ba0');solid([x+a,h/2-1,6],[.55,h-1,.55],'#aec4bd')}
@@ -107,7 +162,7 @@ for(let c of routes){let z=c.x===0?-7:-40;let pad=decoration([c.x,.03,z-7],[13,.
 solid([-1,1.2,-7],[5,2.4,1.2],'#ce8e65');solid([2.2,.5,-13],[2.5,1,2.4],'#d5aa73');solid([-3,.8,-18],[2.3,1.6,2.2],'#abbdaf');solid([28,1,-40],[8,2,1.5],'#d3a675');
 
 // v4.3 scenic pass: lightweight low-poly scenery placed outside active drop lanes.
-function scenicTree(x,z,height=3.5){let y=height/2;decoration([x,y,z],[.55,height,.55],'#95633d');decoration([x,height+.45,z],[2.8,1.8,2.7],'#328f53');decoration([x,height+1.5,z],[2.0,1.25,2.0],'#4db46b');decoration([x-.4,height+2.15,z-.3],[1.15,.7,1.15],'#83ca7c')}
+function scenicTree(x,z,height=3.5){makeBreakableTree(x,z,height)}
 function scenicLamp(x,z){decoration([x,1.8,z],[.18,3.6,.18],'#486a72');decoration([x,3.65,z],[1.2,.16,.52],'#365766');let light=decoration([x,3.51,z],[.9,.1,.4],'#ffe7a1');light.unlit=.7}
 for(let i=0;i<30;i++){let x=(random()-.5)*112,z=-70+random()*94;if(Math.abs(x)<39&&z>-51&&z<13)continue;scenicTree(x,z,2.5+random()*2.2)}
 for(let i=0;i<12;i++){let x=-56+i*10;decoration([x,.2,19],[5,.35,3.6],i%2?'#adc9bd':'#c7d9c6');decoration([x,.4,19],[3.8,.1,2.5],'#a4c1ad')}
@@ -133,17 +188,17 @@ const fractures=b=>Math.min(caps[b.part],Math.floor(b.damage*caps[b.part]/100)),
 function toast(s){$('toast').textContent=s;toastUntil=performance.now()+2800;$('toast').style.opacity=1}
 function ping(speed,broken){if(!soundOn||!audio||audio.state!=='running'||P.time-lastSound<.1)return;lastSound=P.time;let osc=audio.createOscillator(),gain=audio.createGain();osc.type=broken?'square':'triangle';osc.frequency.setValueAtTime(broken?240:110,audio.currentTime);osc.frequency.exponentialRampToValueAtTime(45,audio.currentTime+.065);gain.gain.setValueAtTime(Math.min(.09,speed*.003),audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.08);osc.connect(gain);gain.connect(audio.destination);osc.start();osc.stop(audio.currentTime+.09)}
 function sparks(p,count=8){for(let i=0;i<count;i++){if(effects.length>=120){R.remove(effects[0].m);effects.shift()}let m=decoration(p,[.07,.07,.07],i%2?'#fff5d8':'#ffb363',Q.id(),'box',false);m.unlit=.7;effects.push({m,v:[(random()-.5)*4,2+random()*4,(random()-.5)*4],life:.45+random()*.2})}}
-P.onImpact=c=>{if(round.phase!=='falling'||strong)return;for(let b of [c.a,c.b]){if(!b||b.group!=='doll'||P.time-b.lastHit<.28)continue;let speed=c.speed;if(speed<5)continue;b.lastHit=P.time;let before=b.damage,old=fractures(b),gain=Math.min(100-before,Math.pow(speed-4.5,1.42)*1.22);if(gain<=.05)continue;b.damage=clamp(before+gain,0,100);let broken=fractures(b)-old,points=Math.round(gain*18+broken*240);round.score+=points;round.hits++;round.maxSpeed=Math.max(round.maxSpeed,speed);for(let j of P.joints)if(j.b===b&&b.part>=2){j.cone=j.baseCone+rad(12)*b.damage/100;j.twist=j.baseTwist+rad(20)*b.damage/100}sparks(c.p,broken?10:5);ping(speed,broken>0);$('impact').innerHTML='<strong>+ '+points+'</strong><span>'+names[b.part]+(broken?' · 骨折 +'+broken:' · 碰撞')+'</span>';impactUntil=performance.now()+780;$('impact').style.opacity=1;$('injuryText').textContent=names[b.part]+(broken?' 骨折':' 受伤');let node=document.querySelector('[data-part="'+b.part+'"]');node.classList.remove('crackflash');void node.offsetWidth;node.classList.add('crackflash')}};
+P.onImpact=c=>{const treeBody=c.a?.tree?c.a:c.b?.tree?c.b:null;if(treeBody&&c.speed>8){shatterTree(treeBody.tree,c.speed);return}if(round.phase!=='falling'||strong)return;for(let b of [c.a,c.b]){if(!b||b.group!=='doll'||P.time-b.lastHit<.28)continue;let speed=c.speed;if(speed<5)continue;b.lastHit=P.time;let before=b.damage,old=fractures(b),gain=Math.min(100-before,Math.pow(speed-4.5,1.42)*1.22);if(gain<=.05)continue;b.damage=clamp(before+gain,0,100);let broken=fractures(b)-old,points=Math.round(gain*18+broken*240);round.score+=points;round.hits++;round.maxSpeed=Math.max(round.maxSpeed,speed);for(let j of P.joints)if(j.b===b&&b.part>=2){j.cone=j.baseCone+rad(12)*b.damage/100;j.twist=j.baseTwist+rad(20)*b.damage/100}sparks(c.p,broken?10:5);ping(speed,broken>0);$('impact').innerHTML='<strong>+ '+points+'</strong><span>'+names[b.part]+(broken?' · 骨折 +'+broken:' · 碰撞')+'</span>';impactUntil=performance.now()+780;$('impact').style.opacity=1;$('injuryText').textContent=names[b.part]+(broken?' 骨折':' 受伤');let node=document.querySelector('[data-part="'+b.part+'"]');node.classList.remove('crackflash');void node.offsetWidth;node.classList.add('crackflash')}};
 function support(x,z,ceiling){let y=0,o=[x,Math.max(.2,ceiling),z];for(let b of P.bodies){if(b.mass)continue;let t=rayBody(o,[0,-1,0],b,150);if(t!==null)y=Math.max(y,o[1]-t)}return y}
 function animatedPose(dt,moving=false){let swing=Math.sin(walk)*walkBlend*.55,air=!grounded,angles=[0,0,swing,-swing,-swing,swing];if(air){angles[2]-=.35;angles[3]-=.35;angles[4]+=.12;angles[5]+=.12}let poses=layout.map((base,i)=>{let q=Q.axis([0,1,0],actorYaw),p=[...base];if(i>1){let anchor=i<4?[i===2?-.63:.63,2.7,0]:[i===4?-.32:.32,1.5,0],localQ=Q.axis([1,0,0],angles[i]);p=V.add(anchor,Q.rot(localQ,V.sub(base,anchor)));q=Q.mul(q,localQ)}return {p:Q.rot(Q.axis([0,1,0],actorYaw),p),q}});
  let minY=Math.min(...[4,5].map(i=>{let h=sizes[i].map(x=>x/2),a=angles[i];return poses[i].p[1]-Math.abs(Math.cos(a))*h[1]-Math.abs(Math.sin(a))*h[2]})),lift=grounded?.015-minY:0;
  for(let i=0;i<6;i++){let b=dolls[i],old=[...b.p],oq=[...b.q];b.p=V.add(hero,V.add(poses[i].p,[0,lift,0]));b.q=poses[i].q;b.animV=dt?V.mul(V.sub(b.p,old),1/dt):[0,0,0];b.animW=dt?V.mul(Q.delta(b.q,oq),1/dt):[0,0,0]}}
-function controls(dt){jumpBuffer=Math.max(0,jumpBuffer-dt);coyote=grounded?.12:Math.max(0,coyote-dt);if(strong&&jumpBuffer>0&&(grounded||coyote>0)){velY=9.4;grounded=false;coyote=0;jumpBuffer=0;airStart=hero[1]}let fw=(keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0)-stick.y,side=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0)+stick.x,move=V.add(V.mul([-Math.sin(yaw),0,-Math.cos(yaw)],fw),V.mul([Math.cos(yaw),0,-Math.sin(yaw)],side)),length=V.len(move);if(length>1)move=V.mul(move,1/length);let moving=length>.08,speed=keys.has('ShiftLeft')||keys.has('ShiftRight')?10.0:7.0;moveVelocity=V.mul(move,speed);let next=V.add(hero,V.mul(moveVelocity,dt));next[0]=clamp(next[0],-143,143);next[2]=clamp(next[2],-154,118);let floor=support(next[0],next[2],hero[1]+.38);if(floor>hero[1]+.37){next[0]=hero[0];next[2]=hero[2];floor=support(hero[0],hero[2],hero[1]+.38)}
+function controls(dt){jumpBuffer=Math.max(0,jumpBuffer-dt);coyote=grounded?.12:Math.max(0,coyote-dt);if(strong&&jumpBuffer>0&&(grounded||coyote>0)){velY=9.4;grounded=false;coyote=0;jumpBuffer=0;airStart=hero[1]}let fw=(keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0)-stick.y,side=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0)+stick.x,move=V.add(V.mul([-Math.sin(yaw),0,-Math.cos(yaw)],fw),V.mul([Math.cos(yaw),0,-Math.sin(yaw)],side)),length=V.len(move);if(length>1)move=V.mul(move,1/length);let moving=length>.08,speed=keys.has('ShiftLeft')||keys.has('ShiftRight')?10.0:7.0;moveVelocity=V.mul(move,speed);let next=V.add(hero,V.mul(moveVelocity,dt));for(const tree of breakableTrees){if(tree.broken)continue;let dx=next[0]-tree.x,dz=next[2]-tree.z,d=Math.hypot(dx,dz);if(d<.85&&hero[1]<tree.height+1){let impact=V.len(moveVelocity);if(impact>=9.5){shatterTree(tree,impact)}else{let nx=dx/(d||1),nz=dz/(d||1);next[0]=tree.x+nx*.86;next[2]=tree.z+nz*.86;moveVelocity=[0,moveVelocity[1],0]}}}next[0]=clamp(next[0],-143,143);next[2]=clamp(next[2],-154,118);let floor=support(next[0],next[2],hero[1]+.38);if(floor>hero[1]+.37){next[0]=hero[0];next[2]=hero[2];floor=support(hero[0],hero[2],hero[1]+.38)}
  velY-=P.gravity*dt;next[1]=hero[1]+velY*dt;if(next[1]<=floor&&velY<=0){next[1]=floor;velY=0;grounded=true;airStart=null}else{if(grounded)airStart=hero[1];grounded=false}hero=next;if(moving){let target=Math.atan2(move[0],move[2]),delta=Math.atan2(Math.sin(target-actorYaw),Math.cos(target-actorYaw));actorYaw+=delta*Math.min(1,dt*14);walk+=dt*(speed>8?15:11)}walkBlend+=((moving?1:0)-walkBlend)*Math.min(1,dt*10);animatedPose(dt,moving);if(!grounded&&airStart!==null&&airStart-hero[1]>1.5)ragdoll([moveVelocity[0],velY,moveVelocity[2]])}
 function ragdoll(velocity=null){if(!strong)return;strong=false;P.drag=null;keys.clear();stick.x=stick.y=0;stick.id=null;$('knob').style.transform='';moveVelocity=[0,0,0];if(round.phase==='ready')round.phase='falling';for(let b of dolls){b.active=true;b.v=velocity?[...velocity]:V.add(moveVelocity,[0,velY,0]);b.w=velocity?[-.65,.12,.16]:[0,0,0]}$('strength').textContent='🧸 布娃娃 OFF';$('strength').className='pill off';$('notice').textContent='布娃娃已接管 · 滑动空白转镜头 · 等待停稳结算';$('launch').innerHTML='结算本次<small>正在记录碰撞</small>'}
 function launch(){if(round.phase==='complete'){reset();return}if(round.phase==='falling'){finish();return}let c=routes[route];if(Math.abs(hero[0]-c.x)<6&&hero[1]>c.h-1){hero=[c.x,c.h+.1,.20];actorYaw=Math.PI;animatedPose(0);ragdoll([0,1,-5.4])}else ragdoll([-Math.sin(yaw)*5.2,2,-Math.cos(yaw)*5.2]);toast('开始摔落 · 记录真实接触产生的碰撞得分')}
 function heal(){reset(false);toast('全部治疗完成，已回到赛道起点')}
-function reset(clear=true){P.drag=null;turning=null;strong=true;hero=[routes[route].x,routes[route].h,3.1];velY=0;walk=0;walkBlend=0;grounded=true;jumpBuffer=0;coyote=0;actorYaw=0;airStart=null;keys.clear();stick.x=stick.y=0;stick.id=null;$('knob').style.transform='';for(let b of dolls){b.active=false;b.v=[0,0,0];b.w=[0,0,0];b.damage=0;b.lastHit=-99}for(let j of P.joints){j.cone=j.baseCone;j.twist=j.baseTwist}round={phase:'ready',elapsed:0,still:0,score:0,maxSpeed:0,hits:0,assisted:!clear&&props.length>0};if(clear)clearProps();animatedPose(0);for(let e of effects)R.remove(e.m);effects=[];show('results',false);$('strength').className='pill enabled';$('strength').textContent='💪 力气 ON';$('launch').innerHTML='开始摔落<small>DROP TEST · F</small>';$('injuryText').textContent='完好无损';$('notice').textContent='移动探索，或点击「开始摔落」';$('routeName').textContent=routes[route].name;$('routeDesc').textContent=routes[route].desc;$('best').textContent=records[route].toLocaleString();$('impact').style.opacity=0;syncModels();updateHUD();camera(true)}
+function reset(clear=true){if(clear)restoreTrees();P.drag=null;turning=null;strong=true;hero=[routes[route].x,routes[route].h,3.1];velY=0;walk=0;walkBlend=0;grounded=true;jumpBuffer=0;coyote=0;actorYaw=0;airStart=null;keys.clear();stick.x=stick.y=0;stick.id=null;$('knob').style.transform='';for(let b of dolls){b.active=false;b.v=[0,0,0];b.w=[0,0,0];b.damage=0;b.lastHit=-99}for(let j of P.joints){j.cone=j.baseCone;j.twist=j.baseTwist}round={phase:'ready',elapsed:0,still:0,score:0,maxSpeed:0,hits:0,assisted:!clear&&props.length>0};if(clear)clearProps();animatedPose(0);for(let e of effects)R.remove(e.m);effects=[];show('results',false);$('strength').className='pill enabled';$('strength').textContent='💪 力气 ON';$('launch').innerHTML='开始摔落<small>DROP TEST · F</small>';$('injuryText').textContent='完好无损';$('notice').textContent='移动探索，或点击「开始摔落」';$('routeName').textContent=routes[route].name;$('routeDesc').textContent=routes[route].desc;$('best').textContent=records[route].toLocaleString();$('impact').style.opacity=0;syncModels();updateHUD();camera(true)}
 
 // v4.2 persistent score shop: only clean completed runs award spendable points.
 const shopCatalog={bomb:{name:'炸弹',emoji:'💣',price:60000},spring:{name:'弹簧',emoji:'🌀',price:38000},box:{name:'木箱',emoji:'📦',price:12000},ball:{name:'保龄球',emoji:'🎳',price:26000},balloon:{name:'气球',emoji:'🎈',price:18000}};
@@ -168,7 +223,7 @@ function updateProps(dt){for(let p of props){if(p.type==='balloon'){p.b.v[1]+=P.
 function syncModels(){for(let b of dolls){b.mesh.p=[...b.p];b.mesh.q=[...b.q];b.mesh.visible=!(first&&b.part===0);b.mesh.c=V.mix(b.base,[1,.58,.35],b.damage/100*.38);for(let o of b.ornaments){o.m.p=b.world(o.p);o.m.q=Q.mul(b.q,o.q);o.m.visible=b.mesh.visible&&(!o.crack||fractures(b)>0)}}}
 function updateHUD(){$('score').textContent=round.score.toLocaleString();$('bones').innerHTML=totalBones()+'<small> / 48</small>';$('speed').innerHTML=round.maxSpeed.toFixed(1)+'<small> m/s</small>';for(let b of dolls){let e=document.querySelector('[data-part="'+b.part+'"]');e.classList.toggle('hurt',b.damage>0);e.classList.toggle('broken',fractures(b)>0);e.title=names[b.part]+'：'+Math.round(b.damage)+'% 受伤，'+fractures(b)+' 骨折点'}}
 function camera(snap=false){let target=first?V.add(dolls[0].p,[0,.06,0]):V.add(dolls[1].p,[0,.3,0]),dir=[-Math.sin(yaw)*Math.cos(pitch),-Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch)],eye;if(first){eye=target;target=V.add(eye,dir)}else{eye=V.add(target,[-dir[0]*distance,-dir[1]*distance+1,-dir[2]*distance]);let delta=V.sub(eye,target),len=V.len(delta),n=V.norm(delta);for(let b of P.bodies){if(b.mass)continue;let t=rayBody(target,n,b,len);if(t!==null&&t>.3&&t<len)len=Math.max(1,t-.3)}eye=V.add(target,V.mul(n,len));eye[1]=Math.max(.6,eye[1])}R.eye=snap||first?eye:V.mix(R.eye,eye,.16);R.target=snap||first?target:V.mix(R.target,target,.18)}
-function step(dt){if(strong)controls(dt);updateProps(dt);P.step(dt);if(round.phase==='falling'){round.elapsed+=dt;let speed=dolls.reduce((s,b)=>s+V.len(b.v)+V.len(b.w)*.18,0)/6;round.still=round.elapsed>2&&speed<.75?round.still+dt:0;if(round.still>1.4||round.elapsed>18)finish()}for(let e of effects){e.life-=dt;e.v[1]-=12*dt;e.m.p=V.add(e.m.p,V.mul(e.v,dt));e.m.q=Q.step(e.m.q,[dt*3,dt*2,0]);if(e.life<=0)R.remove(e.m)}effects=effects.filter(e=>e.life>0);for(let g of clouds)for(let m of g)m.p[0]+=dt*.08}
+function step(dt){if(strong)controls(dt);updateProps(dt);P.step(dt);updateTreeFragments(dt);if(round.phase==='falling'){round.elapsed+=dt;let speed=dolls.reduce((s,b)=>s+V.len(b.v)+V.len(b.w)*.18,0)/6;round.still=round.elapsed>2&&speed<.75?round.still+dt:0;if(round.still>1.4||round.elapsed>18)finish()}for(let e of effects){e.life-=dt;e.v[1]-=12*dt;e.m.p=V.add(e.m.p,V.mul(e.v,dt));e.m.q=Q.step(e.m.q,[dt*3,dt*2,0]);if(e.life<=0)R.remove(e.m)}effects=effects.filter(e=>e.life>0);for(let g of clouds)for(let m of g)m.p[0]+=dt*.08}
 function jump(){if(!strong||pause())return;jumpBuffer=.18;if(grounded||coyote>0){velY=9.4;grounded=false;coyote=0;jumpBuffer=0;airStart=hero[1]}}
 function pause(){return !$('shopPanel').classList.contains('hidden')||!entered||!$('settings').classList.contains('hidden')||!$('results').classList.contains('hidden')}
 const canvas=$('viewport');canvas.addEventListener('contextmenu',e=>e.preventDefault());
