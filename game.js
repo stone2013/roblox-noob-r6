@@ -1,4 +1,4 @@
-import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.5.0';
+import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.6.0';
 const $=id=>document.getElementById(id),show=(id,on)=>$(id).classList.toggle('hidden',!on),R=new Renderer($('viewport')),P=new Physics();
 const rad=d=>d*Math.PI/180,colors={yellow:'#ffdb39',blue:'#287ac5',green:'#73b343'},names=['头部','躯干','左臂','右臂','左腿','右腿'],caps=[6,18,5,5,7,7];
 const routes=[{name:'01 / 高台自由落体',desc:'从 16 米高台落下，挑战一次重击。',x:0,h:16},{name:'02 / 翻滚阶梯',desc:'20 级长阶梯，连续翻滚与多次碰撞。',x:-28,h:20},{name:'03 / 山谷滑坡',desc:'24 米滑坡与凸起路障，滑行后翻滚。',x:28,h:24},{name:'04 / 雪山之巅',desc:'42 米雪山：悬崖、积木雪坡、岩石障碍与连续跌落。',x:55,h:42}];
@@ -19,49 +19,66 @@ for(let c of routes){let {x,h}=c;solid([x,h-.6,5],[10,1.2,8],'#e4eadf');let deck
 for(let i=0;i<20;i++){let h=19-i,z=-1-i*1.7;solid([-28,h/2,z],[8.4,h,1.7],i%2?'#b9c6c0':'#d1dacf');decoration([-28,h+.025,z+.64],[8.1,.04,.2],'#efb473',Q.id(),'box',false)}
 const slopeQ=Q.axis([1,0,0],-Math.atan2(22,34));solid([28,11.8,-16],[9,1.0,40.5],'#b8cbd0',slopeQ);for(let x of [23.35,32.65])solid([x,12.2,-16],[.4,1.1,40.5],'#799b9b',slopeQ);for(let z of [-8,-18,-28]){let y=12.4+(z+16)*22/34;solid([28,y,z],[7.8,.6,.75],'#dca373',slopeQ)}
 
-// v4.5 continuous alpine ridge: broad tapered bedrock, snowy shoulders, and
-// matching tilted physical slabs. All collidable snow faces use the same transform
-// as their visible geometry; narrow raised stair lips are deliberately removed.
-const mountainX=55,mountainAngle=-Math.atan2(2.3,3.25),mountainRotation=Q.axis([1,0,0],mountainAngle);
-for(let i=0;i<16;i++){
-  const z=-1-i*3.25,crest=39-i*2.3,span=3.99;
-  const ridgeWidth=10.6+Math.sin(i*.37)*.65;
-  // Underlying mass reaches ground: this is a mountain, not a floating bridge.
-  const coreHeight=Math.max(.6,crest-1.05);
-  solid([mountainX,coreHeight*.5,z],[ridgeWidth,coreHeight,3.45],i%3?'#879ca4':'#778f9b');
-  // The top is an inclined snow face, with a real matching collider.
-  solid([mountainX,crest-.13,z],[ridgeWidth+.15,.44,span],i%4===0?'#f1f8f9':'#dcecf0',mountainRotation);
-  decoration([mountainX,crest+.10,z],[ridgeWidth+.12,.055,span-.12],'#f9ffff',mountainRotation,'box',false);
-  // Flanks widen toward the base and create a recognizable alpine silhouette.
-  for(let side of [-1,1]){
-    const shoulderX=mountainX+side*(ridgeWidth*.5+2.7+i*.055);
-    const shoulderTop=Math.max(.7,crest-3.8-i*.08);
-    solid([shoulderX,shoulderTop*.5,z],[5.8,shoulderTop,3.5],i%2?'#7b929d':'#90a5ae');
-    decoration([shoulderX,shoulderTop+.07,z],[5.65,.16,3.3],i%3?'#c8dce0':'#e9f3f4',Q.id(),'box',false);
-    // Smaller buttresses broaden the lower slope instead of sheer vertical walls.
-    const footX=mountainX+side*(ridgeWidth*.5+7.1+i*.12);
-    const footTop=Math.max(.55,shoulderTop*.56);
-    solid([footX,footTop*.5,z],[4.5,footTop,3.48],i%3?'#8ba1aa':'#a4b7bd');
-  }
-  // Rocks sit beside the main run rather than blocking its full width.
-  if(i%4===2){let rx=mountainX+(i%2?4.6:-4.6);
-    solid([rx,crest+.65,z],[1.35,1.15,1.25],'#6b818d',Q.axis([0,1,0],i*.36));
-    decoration([rx,crest+1.28,z],[1.0,.16,.95],'#eef7f8',Q.id(),'box',false);
-  }
+// v4.6: rugged, branching mountain massif, not a single straight ramp.
+// Collision uses the same solid boxes as visible terrain. Staggered terraces
+// form cliffs, shelves, gullies, and alternate descent paths.
+const mountainX=55;
+const ridge=[
+// x-offset, z, summit height, width, depth
+[0,-1,40,10,7],[1,-7,36,11,7],[-1.4,-13,34,10,7],
+[-3.2,-19,27,9,7],[-1.2,-25,25,12,7],[2.2,-31,18,11,7],
+[4.4,-37,17,9,7],[1.8,-43,10,13,7],[-1.5,-49,7,13,7],
+[0,-55,3,16,8]];
+for(let i=0;i<ridge.length;i++){
+ let [off,z,top,width,depth]=ridge[i],x=mountainX+off;
+ // Massive rocky core with a narrow, irregular snow cap.
+ solid([x,top/2,z],[width,top,depth],i%3===0?'#657e8d':i%3===1?'#7e96a4':'#91a5b1');
+ decoration([x,top+.045,z],[width-.2,.09,depth-.15],i%3===0?'#f7fdff':'#dcecf4',Q.id(),'box',false);
+ // Distinct cliff edges and short rocky ledges.
+ if(i>1&&i<9){
+  let side=i%2?1:-1;
+  solid([x+side*(width/2+1),top-2,z],[2.2,3.8,depth*.65],'#647e8c');
+  decoration([x+side*(width/2+.4),top+.24,z],[1.3,.38,depth*.48],'#b9cbd5',Q.id(),'box',false);
+ }
+ // Mountain flanks broaden as elevation falls, with uneven shoulders.
+ for(let side of [-1,1]){
+  let flankTop=Math.max(1,top*(.62+(i%3)*.045)),fx=x+side*(width*.5+3.4);
+  solid([fx,flankTop/2,z],[6.8,flankTop,depth+.15],i%2?'#8499a5':'#6e8796');
+  if(i%2===0)decoration([fx,flankTop+.07,z],[5.5,.15,depth-.3],'#d7e5ed',Q.id(),'box',false);
+  let outer=Math.max(.7,flankTop*.42),ox=fx+side*5.5;
+  solid([ox,outer/2,z],[5.3,outer,depth+.15],'#9caeb6');
+ }
 }
-// A snowy summit above the takeoff platform and distinct jagged distant peaks.
-for(let side of [-1,1]){
-  const px=mountainX+side*12;
-  for(let level=0;level<5;level++){
-    let width=9-level*1.55,height=4.2+level*1.6;
-    decoration([px,height*.5+level*3,-1],[width,height,10-level*1.5],
-      level>2?'#e4f0f2':'#8299a6',Q.axis([0,1,0],side*.15),'box',false);
-  }
+// Three separate craggy peaks: summit and two side summits.
+// Their stepped narrowing produces a recognizable jagged mountain skyline.
+const peaks=[
+ {x:mountainX-15,z:-13,h:46,r:13},
+ {x:mountainX+18,z:-22,h:34,r:12},
+ {x:mountainX-20,z:-38,h:25,r:10}
+];
+for(let p of peaks){
+ const levels=7,step=p.h/levels;
+ for(let k=0;k<levels;k++){
+  let width=p.r*2*(1-k/levels)+.6,depth=width*.88,
+      cx=p.x+Math.sin(k*1.6+p.x)*.65,cz=p.z+Math.cos(k*1.2)*.45;
+  solid([cx,k*step+step/2,cz],[width,step+.12,depth],
+    k>levels*.65?'#e5f0f5':k>levels*.45?'#b9ccd6':'#728b9a');
+ }
+ decoration([p.x,p.h+.3,p.z],[1.8,.65,1.6],'#faffff',Q.id(),'box',false);
 }
-for(let i=0;i<7;i++){let x=mountainX+(i-3)*2.4,z=-57;
-  solid([x,.55,z],[2.2,1.1,2.0],i%2?'#8199a5':'#a9bdc5');}
-decoration([mountainX,1.15,-64],[14,2.3,2.0],'#9bb0bb');
-decoration([mountainX,2.35,-64],[13,.12,1.9],'#eff8fa',Q.id(),'box',false);
+// Branching ridge to the right: optional ledges to tumble across.
+for(let i=0;i<5;i++){
+ let z=-18-i*7,x=mountainX+12+i*1.8,top=Math.max(3,26-i*5);
+ solid([x,top/2,z],[7.2,top,7.3],i%2?'#8299a6':'#708998');
+ decoration([x,top+.05,z],[7,.1,7],'#edf6f9',Q.id(),'box',false);
+}
+// Gully obstacles near the base, low enough to tumble over.
+for(let i=0;i<6;i++){
+ let x=mountainX+(i-2.5)*2.8,z=-61+(i%2)*1.3;
+ solid([x,.5+(i%3)*.15,z],[2.2,1+(i%3)*.3,2.0],i%2?'#839ba8':'#b0c2cc');
+}
+decoration([mountainX,1.15,-67],[18,2.3,2.2],'#9baeb9');
+decoration([mountainX,2.35,-67],[17,.12,2.0],'#f2fbff',Q.id(),'box',false);
 for(let c of routes){let z=c.x===0?-7:-40;let pad=decoration([c.x,.03,z-7],[13,.05,18],'#b8cab1',Q.id(),'box',false);pad.studs=1;for(let side of [-1,1])for(let k=0;k<4;k++){let x=c.x+side*6.8,zz=z-k*4;decoration([x,.1,zz],[.7,.2,.7],'#536e65');decoration([x,.5,zz],[.44,.8,.44],'#efa369');decoration([x,.6,zz],[.46,.14,.46],'#fff1d1')};stripe(c.x,.09,z+1,12)}
 solid([-1,1.2,-7],[5,2.4,1.2],'#ce8e65');solid([2.2,.5,-13],[2.5,1,2.4],'#d5aa73');solid([-3,.8,-18],[2.3,1.6,2.2],'#abbdaf');solid([28,1,-40],[8,2,1.5],'#d3a675');
 
