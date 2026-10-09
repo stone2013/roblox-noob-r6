@@ -1,9 +1,9 @@
-import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.3.1';
+import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.4.0';
 const $=id=>document.getElementById(id),show=(id,on)=>$(id).classList.toggle('hidden',!on),R=new Renderer($('viewport')),P=new Physics();
 const rad=d=>d*Math.PI/180,colors={yellow:'#ffdb39',blue:'#287ac5',green:'#73b343'},names=['头部','躯干','左臂','右臂','左腿','右腿'],caps=[6,18,5,5,7,7];
-const routes=[{name:'01 / 高台自由落体',desc:'从 16 米高台落下，挑战一次重击。',x:0,h:16},{name:'02 / 翻滚阶梯',desc:'20 级长阶梯，连续翻滚与多次碰撞。',x:-28,h:20},{name:'03 / 山谷滑坡',desc:'24 米滑坡与凸起路障，滑行后翻滚。',x:28,h:24}];
+const routes=[{name:'01 / 高台自由落体',desc:'从 16 米高台落下，挑战一次重击。',x:0,h:16},{name:'02 / 翻滚阶梯',desc:'20 级长阶梯，连续翻滚与多次碰撞。',x:-28,h:20},{name:'03 / 山谷滑坡',desc:'24 米滑坡与凸起路障，滑行后翻滚。',x:28,h:24},{name:'04 / 雪山之巅',desc:'42 米雪山：悬崖、积木雪坡、岩石障碍与连续跌落。',x:55,h:42}];
 let route=0,strong=true,first=false,slow=false,tool='grab',entered=false,yaw=.48,pitch=.4,distance=10,actorYaw=0,hero=[0,16,3],velY=0,walk=0,walkBlend=0,moveVelocity=[0,0,0],grounded=true,airStart=null,turning=null,stick={x:0,y:0,id:null},keys=new Set(),props=[],effects=[],clouds=[],soundOn=false,audio=null,lastSound=0,impactUntil=0,toastUntil=0,frame=0,acc=0;
-let round={phase:'ready',elapsed:0,still:0,score:0,maxSpeed:0,hits:0,assisted:false},records=[0,0,0];try{let d=JSON.parse(localStorage.getItem('noob-break-records-v4'));if(Array.isArray(d)&&d.length===3)records=d.map(v=>Number.isFinite(v)?Math.max(0,v):0)}catch{}
+let round={phase:'ready',elapsed:0,still:0,score:0,maxSpeed:0,hits:0,assisted:false},records=[0,0,0,0];try{let d=JSON.parse(localStorage.getItem('noob-break-records-v4'));if(Array.isArray(d)&&d.length>=3)records=d.slice(0,4).concat(Array(Math.max(0,4-d.length)).fill(0)).map(v=>Number.isFinite(v)?Math.max(0,v):0)}catch{}
 let seed=483;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
 function decoration(p,s,c,q=Q.id(),shape='box',cast=true){let m=R.add(p,s,c,shape,q);m.cast=cast;return m}
 function solid(p,s,c,q=Q.id(),tag='terrain'){let b=P.add(new Body(p,s,0,'box',q));b.tag=tag;b.mesh=decoration(p,s,c,q);return b}
@@ -18,6 +18,23 @@ for(let c of routes){let {x,h}=c;solid([x,h-.6,5],[10,1.2,8],'#e4eadf');let deck
 // Stair tops descend away from the launch platform; thick boxes prevent fast tunnelling.
 for(let i=0;i<20;i++){let h=19-i,z=-1-i*1.7;solid([-28,h/2,z],[8.4,h,1.7],i%2?'#b9c6c0':'#d1dacf');decoration([-28,h+.025,z+.64],[8.1,.04,.2],'#efb473',Q.id(),'box',false)}
 const slopeQ=Q.axis([1,0,0],-Math.atan2(22,34));solid([28,11.8,-16],[9,1.0,40.5],'#b8cbd0',slopeQ);for(let x of [23.35,32.65])solid([x,12.2,-16],[.4,1.1,40.5],'#799b9b',slopeQ);for(let z of [-8,-18,-28]){let y=12.4+(z+16)*22/34;solid([28,y,z],[7.8,.6,.75],'#dca373',slopeQ)}
+
+// Course 04: 42 m alpine descent, collidable terraced snow and rock obstacles.
+const mountainX=55;
+for(let i=0;i<16;i++){
+  let z=-1-i*3.25,top=39-i*2.25,width=10.2+(i%3)*.7;
+  solid([mountainX,top-1.05,z],[width,2.1,3.45],i%4===0?'#b8c9cf':'#e2eef1');
+  decoration([mountainX,top+.04,z],[width-.15,.08,3.35],i%3===0?'#f9ffff':'#eaf5f6',Q.id(),'box',false);
+  if(i%3===1){let offset=(i%2?2.4:-2.4);solid([mountainX+offset,top+.65,z],[1.3,1.25,1.15],'#7f959f',Q.axis([0,1,0],i*.41));}
+  if(i%4===2){decoration([mountainX-4.8,top+.9,z],[.25,1.8,.25],'#b44e47');decoration([mountainX-4.8,top+1.65,z],[.85,.45,.08],'#f5d9a4');}
+}
+for(let i=0;i<8;i++){let x=mountainX+(i%2?6.8:-6.8),z=-6-i*6;let hh=5+(i%3)*2;
+decoration([x,hh*.5,z],[3.8,hh,3.4],'#9eafb6',Q.axis([0,1,0],i*.28),'box',false);
+decoration([x,hh+.55,z],[3.1,1.1,3.0],'#f0f8f9',Q.id(),'box',false);}
+for(let i=0;i<7;i++){let x=mountainX+(i-3)*2.4,z=-57;
+solid([x,.5,z],[2.2,1.0,2.0],i%2?'#8fa8b1':'#b9cbd1');}
+decoration([mountainX,1.2,-64],[13,2.4,1.4],'#b9c7d1');
+decoration([mountainX,2.45,-64],[12,.13,1.5],'#f2faff',Q.id(),'box',false);
 for(let c of routes){let z=c.x===0?-7:-40;let pad=decoration([c.x,.03,z-7],[13,.05,18],'#b8cab1',Q.id(),'box',false);pad.studs=1;for(let side of [-1,1])for(let k=0;k<4;k++){let x=c.x+side*6.8,zz=z-k*4;decoration([x,.1,zz],[.7,.2,.7],'#536e65');decoration([x,.5,zz],[.44,.8,.44],'#efa369');decoration([x,.6,zz],[.46,.14,.46],'#fff1d1')};stripe(c.x,.09,z+1,12)}
 solid([-1,1.2,-7],[5,2.4,1.2],'#ce8e65');solid([2.2,.5,-13],[2.5,1,2.4],'#d5aa73');solid([-3,.8,-18],[2.3,1.6,2.2],'#abbdaf');solid([28,1,-40],[8,2,1.5],'#d3a675');
 
