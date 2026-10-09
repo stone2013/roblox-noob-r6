@@ -206,12 +206,12 @@ for(let i=0;i<6;i++){for(let k=0;k<3;k++)for(let side of [-1,1])detail(i,[(k-1)*
 const structures49=createStructures({solid,decoration,P,R,random});
 const vehicles49=createVehicles({P,R,decoration});
 const replay49=createReplay({dolls});
-function vehicleSpawn49(){let p=[hero[0]+Math.sin(yaw)*3,Math.max(1,hero[1]),hero[2]-Math.cos(yaw)*3];vehicles49.spawn(p);toast('🛒 已生成物理矿车；靠近后可乘坐')}
+function vehicleSpawn49(){assisted();let p=[hero[0]+Math.sin(yaw)*3,Math.max(1,hero[1]),hero[2]-Math.cos(yaw)*3];vehicles49.spawn(p);toast('🛒 已生成物理矿车；靠近后可乘坐')}
 function vehicleToggle49(){
  if(vehicles49.riding){let v=vehicles49.dismount();hero=[v.b.p[0]+2,Math.max(0,v.b.p[1]),v.b.p[2]];toast('已下车');return}
  let near=vehicles49.vehicles.reduce((best,v)=>V.len(V.sub(v.b.p,dolls[1].p))<(best?.distance??6)?{v,distance:V.len(V.sub(v.b.p,dolls[1].p))}:best,null);
  if(!near){toast('先生成矿车并靠近它');return}
- vehicles49.mount(near.v);toast('已乘坐矿车，WASD 驾驶，跳跃可弹射');
+ assisted();vehicles49.mount(near.v);toast('已乘坐矿车，WASD 驾驶，跳跃可弹射');
 }
 function vehicleDrive49(dt){
  const v=vehicles49.riding;if(!v||!strong)return;
@@ -265,7 +265,7 @@ function updateHUD(){$('score').textContent=round.score.toLocaleString();$('bone
 function camera(snap=false){let target=first?V.add(dolls[0].p,[0,.06,0]):V.add(dolls[1].p,[0,.3,0]),dir=[-Math.sin(yaw)*Math.cos(pitch),-Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch)],eye;if(first){eye=target;target=V.add(eye,dir)}else{eye=V.add(target,[-dir[0]*distance,-dir[1]*distance+1,-dir[2]*distance]);let delta=V.sub(eye,target),len=V.len(delta),n=V.norm(delta);for(let b of P.bodies){if(b.mass)continue;let t=rayBody(target,n,b,len);if(t!==null&&t>.3&&t<len)len=Math.max(1,t-.3)}eye=V.add(target,V.mul(n,len));eye[1]=Math.max(.6,eye[1])}R.eye=snap||first?eye:V.mix(R.eye,eye,.16);R.target=snap||first?target:V.mix(R.target,target,.18)}
 function step(dt){if(replay49.playing){replay49.tick(dt);return}if(strong){if(vehicles49.riding)vehicleDrive49(dt);else controls(dt)}updateProps(dt);P.step(dt);updateTreeFragments(dt);structures49.tick(dt);vehicles49.tick(dt);if(round.phase==='falling')replay49.capture(P.time);if(round.phase==='falling'){round.elapsed+=dt;let speed=dolls.reduce((s,b)=>s+V.len(b.v)+V.len(b.w)*.18,0)/6;round.still=round.elapsed>2&&speed<.75?round.still+dt:0;if(round.still>1.4||round.elapsed>18)finish()}for(let e of effects){e.life-=dt;e.v[1]-=12*dt;e.m.p=V.add(e.m.p,V.mul(e.v,dt));e.m.q=Q.step(e.m.q,[dt*3,dt*2,0]);if(e.life<=0)R.remove(e.m)}effects=effects.filter(e=>e.life>0);for(let g of clouds)for(let m of g)m.p[0]+=dt*.08}
 function jump(){if(!strong||pause())return;if(vehicles49.riding){const v=vehicles49.dismount();ragdoll(V.add(v.b.v,[0,8,0]));return}jumpBuffer=.18;if(grounded||coyote>0){velY=9.4;grounded=false;coyote=0;jumpBuffer=0;airStart=hero[1]}}
-function pause(){return replay49.playing|| !$('shopPanel').classList.contains('hidden')||!entered||!$('settings').classList.contains('hidden')||!$('results').classList.contains('hidden')}
+function pause(){return !$('shopPanel').classList.contains('hidden')||!entered||!$('settings').classList.contains('hidden')||!$('results').classList.contains('hidden')}
 const canvas=$('viewport');canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('pointerdown',e=>{if(pause()||turning)return;e.preventDefault();canvas.setPointerCapture(e.pointerId);let ray=R.ray(e.clientX,e.clientY);
  if(tool!=='grab'){let t=ray.d[1]<-.001?-ray.o[1]/ray.d[1]:null;for(let b of P.bodies){if(b.mass)continue;let a=rayBody(ray.o,ray.d,b,100);if(a!==null&&(t===null||a<t))t=a}if(t!==null&&t>0&&t<100)spawn(tool,V.add(ray.o,V.mul(ray.d,t)));else toast('请点击地面、平台或斜坡放置道具');return}
