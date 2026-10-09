@@ -1,7 +1,7 @@
 {
  "name":"Noob 骨折模拟器 · Break Lab",
  "short_name":"骨折实验场",
- "description":"六块积木、一场重力实验。三种卡通摔落赛道，离线横屏物理游戏。",
+ "description":"六块积木、一场重力实验。四种卡通摔落赛道、可破坏建筑、矿车与慢动作回放，离线横屏物理游戏。",
  "lang":"zh-CN",
  "id":"/roblox-noob-r6/",
  "start_url":"./?v=4.0.0",
