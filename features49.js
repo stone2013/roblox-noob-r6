@@ -1,5 +1,5 @@
 /* Break Lab v4.9 extensions: deterministic destruction, vehicles and replay. */
-import {V,Q,Body} from './engine.js?v=4.9.0';
+import {V,Q,Body} from './engine.js?v=4.9.2';
 export function createStructures({solid,decoration,P,R,random}){
  const structures=[],debris=[];
  const colors=['#b98152','#d3a36e','#8eacb4'];
