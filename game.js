@@ -1,4 +1,4 @@
-import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.6.2';
+import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.7.0';
 const $=id=>document.getElementById(id),show=(id,on)=>$(id).classList.toggle('hidden',!on),R=new Renderer($('viewport')),P=new Physics();
 const rad=d=>d*Math.PI/180,colors={yellow:'#ffdb39',blue:'#287ac5',green:'#73b343'},names=['头部','躯干','左臂','右臂','左腿','右腿'],caps=[6,18,5,5,7,7];
 const routes=[{name:'01 / 高台自由落体',desc:'从 16 米高台落下，挑战一次重击。',x:0,h:16},{name:'02 / 翻滚阶梯',desc:'20 级长阶梯，连续翻滚与多次碰撞。',x:-28,h:20},{name:'03 / 山谷滑坡',desc:'24 米滑坡与凸起路障，滑行后翻滚。',x:28,h:24},{name:'04 / 雪山之巅',desc:'42 米雪山：悬崖、积木雪坡、岩石障碍与连续跌落。',x:55,h:42}];
@@ -7,9 +7,33 @@ let round={phase:'ready',elapsed:0,still:0,score:0,maxSpeed:0,hits:0,assisted:fa
 let seed=483;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
 function decoration(p,s,c,q=Q.id(),shape='box',cast=true){let m=R.add(p,s,c,shape,q);m.cast=cast;return m}
 function solid(p,s,c,q=Q.id(),tag='terrain'){let b=P.add(new Body(p,s,0,'box',q));b.tag=tag;b.mesh=decoration(p,s,c,q);return b}
-const ground=decoration([0,-1,-18],[210,2,210],'#82b767',Q.id(),'box',false);ground.studs=1;
-// A block-built valley: geometry, collider dimensions and shadows share the same transforms.
-for(let i=0;i<23;i++){let angle=i/23*Math.PI*2,x=Math.cos(angle)*(72+random()*13),z=-18+Math.sin(angle)*(64+random()*10),h=8+random()*16;let a=decoration([x,h*.5-1,z],[15+random()*12,h,15+random()*10],i%3?'#93bca0':'#aacbb2',Q.axis([0,1,0],random()*.5),'box',false);decoration([x,h+1,z],[a.s[0]*.73,3,a.s[2]*.8],'#abc993',a.q,'box',false)}
+const ground=decoration([0,-1,-18],[360,2,360],'#82b767',Q.id(),'box',false);ground.studs=1;
+// Expanded 360x360 playable world. Perimeter hills are solid, not just decoration.
+// Use fewer broad static collision blocks to keep mobile physics affordable.
+const worldLimitX=150,worldMinZ=-162,worldMaxZ=126;
+for(let i=0;i<12;i++){
+ const x=-worldLimitX+(i+.5)*(2*worldLimitX/12),zA=worldMinZ,zB=worldMaxZ;
+ for(const z of [zA,zB]){
+  let ht=12+5*Math.sin(i*.9+z*.03)+((i*7)%4);
+  solid([x,ht/2,z],[26,ht,12],i%2?'#839f94':'#9bb6a7');
+  decoration([x,ht+.3,z],[25,.65,11.7],'#b9cbb6',Q.id(),'box',false);
+ }
+}
+for(let i=0;i<12;i++){
+ const z=worldMinZ+(i+.5)*(worldMaxZ-worldMinZ)/12;
+ for(const x of [-worldLimitX,worldLimitX]){
+  let ht=11+4*Math.sin(i*.9+x*.02)+((i*5)%4);
+  solid([x,ht/2,z],[12,ht,26],i%2?'#829e94':'#a0b8a9');
+  decoration([x,ht+.3,z],[11.7,.65,25],'#bed0bc',Q.id(),'box',false);
+ }
+}
+// Distant block-built foothills, each with a matching collision body.
+for(let i=0;i<16;i++){
+ const ang=i*Math.PI*2/16,x=Math.cos(ang)*115,z=-18+Math.sin(ang)*102;
+ const ht=9+(i%5)*3;
+ solid([x,ht/2,z],[14,ht,14],i%3?'#91aba0':'#a5bcb1');
+ decoration([x,ht+.4,z],[11,.8,11],'#b9cbb4',Q.id(),'box',false);
+}
 for(let i=0;i<26;i++){let x=(random()-.5)*122,z=(random()-.5)*110-20;if(Math.abs(x)<43&&z>-49&&z<13)continue;let h=2.6+random()*2;decoration([x,h*.5,z],[.55,h,.55],'#a78056');decoration([x,h+.75,z],[2.9,2.4,2.7],i%2?'#5d9e66':'#6dab74',Q.axis([0,1,0],.2));decoration([x-.15,h+2.0,z],[1.7,1.0,1.7],'#89bd79')}
 for(let i=0;i<9;i++){let x=(i-4)*20,z=-55+(i%3)*37,y=36+random()*7;let group=[];for(let k=0;k<3;k++){let m=decoration([x+k*3,y+(k===1?1.0:0),z],[5,2.0+(k===1?1.1:0),3.4],'#f4faf4',Q.id(),'box',false);group.push(m)}clouds.push(group)}
 function stripe(x,y,z,w=9){for(let i=0;i<12;i++)decoration([x-w/2+i*w/12,y,z],[w/24,.035,.6],i%2?'#344f53':'#ffd46f',Q.axis([0,1,0],-.35),'box',false)}
@@ -30,7 +54,7 @@ const ridge=[
 [4.4,-37,17,9,7],[1.8,-43,10,13,7],[-1.5,-49,7,13,7],
 [0,-55,3,16,8]];
 for(let i=0;i<ridge.length;i++){
- let [off,z,top,width,depth]=ridge[i],x=mountainX+off;
+ let [off,z,top,width,depth]=ridge[i],x=mountainX+off;width*=1.22;depth*=1.10;
  // Massive rocky core with a narrow, irregular snow cap.
  solid([x,top/2,z],[width,top,depth],i%3===0?'#657e8d':i%3===1?'#7e96a4':'#91a5b1');
  decoration([x,top+.045,z],[width-.2,.09,depth-.15],i%3===0?'#f7fdff':'#dcecf4',Q.id(),'box',false);
@@ -42,22 +66,22 @@ for(let i=0;i<ridge.length;i++){
  }
  // Mountain flanks broaden as elevation falls, with uneven shoulders.
  for(let side of [-1,1]){
-  let flankTop=Math.max(1,top*(.62+(i%3)*.045)),fx=x+side*(width*.5+3.4);
+  let flankTop=Math.max(1,top*(.72+(i%3)*.045)),fx=x+side*(width*.5+3.4);
   solid([fx,flankTop/2,z],[6.8,flankTop,depth+.15],i%2?'#8499a5':'#6e8796');
   if(i%2===0)decoration([fx,flankTop+.07,z],[5.5,.15,depth-.3],'#d7e5ed',Q.id(),'box',false);
-  let outer=Math.max(.7,flankTop*.42),ox=fx+side*5.5;
+  let outer=Math.max(.7,flankTop*.52),ox=fx+side*5.5;
   solid([ox,outer/2,z],[5.3,outer,depth+.15],'#9caeb6');
  }
 }
 // Three separate craggy peaks: summit and two side summits.
 // Their stepped narrowing produces a recognizable jagged mountain skyline.
 const peaks=[
- {x:mountainX-15,z:-13,h:46,r:13},
- {x:mountainX+18,z:-22,h:34,r:12},
- {x:mountainX-20,z:-38,h:25,r:10}
+ {x:mountainX-18,z:-13,h:62,r:16},
+ {x:mountainX+24,z:-27,h:54,r:16},
+ {x:mountainX-22,z:-48,h:42,r:15}
 ];
 for(let p of peaks){
- const levels=7,step=p.h/levels;
+ const levels=9,step=p.h/levels;
  for(let k=0;k<levels;k++){
   let width=p.r*2*(1-k/levels)+.6,depth=width*.88,
       cx=p.x+Math.sin(k*1.6+p.x)*.65,cz=p.z+Math.cos(k*1.2)*.45;
@@ -114,7 +138,7 @@ function support(x,z,ceiling){let y=0,o=[x,Math.max(.2,ceiling),z];for(let b of 
 function animatedPose(dt,moving=false){let swing=Math.sin(walk)*walkBlend*.55,air=!grounded,angles=[0,0,swing,-swing,-swing,swing];if(air){angles[2]-=.35;angles[3]-=.35;angles[4]+=.12;angles[5]+=.12}let poses=layout.map((base,i)=>{let q=Q.axis([0,1,0],actorYaw),p=[...base];if(i>1){let anchor=i<4?[i===2?-.63:.63,2.7,0]:[i===4?-.32:.32,1.5,0],localQ=Q.axis([1,0,0],angles[i]);p=V.add(anchor,Q.rot(localQ,V.sub(base,anchor)));q=Q.mul(q,localQ)}return {p:Q.rot(Q.axis([0,1,0],actorYaw),p),q}});
  let minY=Math.min(...[4,5].map(i=>{let h=sizes[i].map(x=>x/2),a=angles[i];return poses[i].p[1]-Math.abs(Math.cos(a))*h[1]-Math.abs(Math.sin(a))*h[2]})),lift=grounded?.015-minY:0;
  for(let i=0;i<6;i++){let b=dolls[i],old=[...b.p],oq=[...b.q];b.p=V.add(hero,V.add(poses[i].p,[0,lift,0]));b.q=poses[i].q;b.animV=dt?V.mul(V.sub(b.p,old),1/dt):[0,0,0];b.animW=dt?V.mul(Q.delta(b.q,oq),1/dt):[0,0,0]}}
-function controls(dt){jumpBuffer=Math.max(0,jumpBuffer-dt);coyote=grounded?.12:Math.max(0,coyote-dt);if(strong&&jumpBuffer>0&&(grounded||coyote>0)){velY=9.4;grounded=false;coyote=0;jumpBuffer=0;airStart=hero[1]}let fw=(keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0)-stick.y,side=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0)+stick.x,move=V.add(V.mul([-Math.sin(yaw),0,-Math.cos(yaw)],fw),V.mul([Math.cos(yaw),0,-Math.sin(yaw)],side)),length=V.len(move);if(length>1)move=V.mul(move,1/length);let moving=length>.08,speed=keys.has('ShiftLeft')||keys.has('ShiftRight')?10.0:7.0;moveVelocity=V.mul(move,speed);let next=V.add(hero,V.mul(moveVelocity,dt));next[0]=clamp(next[0],-88,88);next[2]=clamp(next[2],-88,78);let floor=support(next[0],next[2],hero[1]+.38);if(floor>hero[1]+.37){next[0]=hero[0];next[2]=hero[2];floor=support(hero[0],hero[2],hero[1]+.38)}
+function controls(dt){jumpBuffer=Math.max(0,jumpBuffer-dt);coyote=grounded?.12:Math.max(0,coyote-dt);if(strong&&jumpBuffer>0&&(grounded||coyote>0)){velY=9.4;grounded=false;coyote=0;jumpBuffer=0;airStart=hero[1]}let fw=(keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0)-stick.y,side=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0)+stick.x,move=V.add(V.mul([-Math.sin(yaw),0,-Math.cos(yaw)],fw),V.mul([Math.cos(yaw),0,-Math.sin(yaw)],side)),length=V.len(move);if(length>1)move=V.mul(move,1/length);let moving=length>.08,speed=keys.has('ShiftLeft')||keys.has('ShiftRight')?10.0:7.0;moveVelocity=V.mul(move,speed);let next=V.add(hero,V.mul(moveVelocity,dt));next[0]=clamp(next[0],-143,143);next[2]=clamp(next[2],-154,118);let floor=support(next[0],next[2],hero[1]+.38);if(floor>hero[1]+.37){next[0]=hero[0];next[2]=hero[2];floor=support(hero[0],hero[2],hero[1]+.38)}
  velY-=P.gravity*dt;next[1]=hero[1]+velY*dt;if(next[1]<=floor&&velY<=0){next[1]=floor;velY=0;grounded=true;airStart=null}else{if(grounded)airStart=hero[1];grounded=false}hero=next;if(moving){let target=Math.atan2(move[0],move[2]),delta=Math.atan2(Math.sin(target-actorYaw),Math.cos(target-actorYaw));actorYaw+=delta*Math.min(1,dt*14);walk+=dt*(speed>8?15:11)}walkBlend+=((moving?1:0)-walkBlend)*Math.min(1,dt*10);animatedPose(dt,moving);if(!grounded&&airStart!==null&&airStart-hero[1]>1.5)ragdoll([moveVelocity[0],velY,moveVelocity[2]])}
 function ragdoll(velocity=null){if(!strong)return;strong=false;P.drag=null;keys.clear();stick.x=stick.y=0;stick.id=null;$('knob').style.transform='';moveVelocity=[0,0,0];if(round.phase==='ready')round.phase='falling';for(let b of dolls){b.active=true;b.v=velocity?[...velocity]:V.add(moveVelocity,[0,velY,0]);b.w=velocity?[-.65,.12,.16]:[0,0,0]}$('strength').textContent='🧸 布娃娃 OFF';$('strength').className='pill off';$('notice').textContent='布娃娃已接管 · 滑动空白转镜头 · 等待停稳结算';$('launch').innerHTML='结算本次<small>正在记录碰撞</small>'}
 function launch(){if(round.phase==='complete'){reset();return}if(round.phase==='falling'){finish();return}let c=routes[route];if(Math.abs(hero[0]-c.x)<6&&hero[1]>c.h-1){hero=[c.x,c.h+.1,.20];actorYaw=Math.PI;animatedPose(0);ragdoll([0,1,-5.4])}else ragdoll([-Math.sin(yaw)*5.2,2,-Math.cos(yaw)*5.2]);toast('开始摔落 · 记录真实接触产生的碰撞得分')}
