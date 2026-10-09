@@ -146,6 +146,23 @@ for(let p of peaks){
  }
  decoration([p.x,p.h+.3,p.z],[1.8,.65,1.6],'#faffff',Q.id(),'box',false);
 }
+// Rugged terrain 2.0: oblique rock faces with matching tilted colliders.
+// Each angled slab is visible and physically solid; offset faces make the
+// massif read as a mountain instead of a straight staircase.
+for(let i=0;i<11;i++){
+ const z=-3-i*5.1, x=mountainX-11+Math.sin(i*.85)*3.5;
+ const y=Math.max(2,39-i*3.25);
+ const angle=Q.axis([0,0,1],(i%2?-.42:.36));
+ solid([x,y*.55,z],[7.5,Math.max(2,y*.9),7.0],i%3?'#718a99':'#8fa6b4',angle);
+ const snow=Q.axis([0,0,1],(i%2?-.42:.36));
+ decoration([x,y+.45,z],[7.3,.2,6.8],'#d9ebf1',snow,'box',false);
+}
+for(let i=0;i<10;i++){
+ const z=-7-i*5.4,x=mountainX+13+Math.cos(i*.9)*4,y=Math.max(1.5,33-i*2.9);
+ const angle=Q.axis([0,0,1],i%2?.38:-.34);
+ solid([x,y*.52,z],[8.2,Math.max(2,y*.92),6.9],i%2?'#748d9d':'#94a9b5',angle);
+ decoration([x,y+.2,z],[7.9,.18,6.5],'#e7f3f8',angle,'box',false);
+}
 // Branching ridge to the right: optional ledges to tumble across.
 for(let i=0;i<5;i++){
  let z=-18-i*7,x=mountainX+12+i*1.8,top=Math.max(3,26-i*5);
