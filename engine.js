@@ -25,7 +25,7 @@ function collide(a,b){if(V.len(V.sub(a.p,b.p))>a.radius+b.radius+.03)return null
  let local=Q.rot(Q.inv(b.q),V.sub(a.p,b.p)),near=local.map((x,i)=>clamp(x,-b.h[i],b.h[i])),delta=V.sub(local,near),len=V.len(delta);if(len>a.h[0])return null;let n;if(len<1e-8){let gaps=local.map((x,i)=>b.h[i]-Math.abs(x)),i=gaps.indexOf(Math.min(...gaps));n=[0,0,0];n[i]=Math.sign(local[i])||1;len=-gaps[i]}else n=V.mul(delta,1/len);n=Q.rot(b.q,n);return{n,p:V.sub(a.p,V.mul(n,a.h[0])),depth:a.h[0]-len}}
  let aa=AX.map(v=>Q.rot(a.q,v)),bb=AX.map(v=>Q.rot(b.q,v)),axes=[...aa,...bb];for(let x of aa)for(let y of bb){let z=V.cross(x,y);if(V.len(z)>.015)axes.push(V.norm(z))}let delta=V.sub(a.p,b.p),depth=1e10,normal;for(let n of axes){let ra=aa.reduce((s,v,i)=>s+Math.abs(V.dot(v,n))*a.h[i],0),rb=bb.reduce((s,v,i)=>s+Math.abs(V.dot(v,n))*b.h[i],0),dist=V.dot(delta,n),overlap=ra+rb-Math.abs(dist);if(overlap<=0)return null;if(overlap<depth){depth=overlap;normal=dist>=0?n:V.mul(n,-1)}}let p=supportPoint(a,normal,true);return{n:normal,p,depth}}
 export class Physics{
- constructor(){this.bodies=[];this.joints=[];this.drag=null;this.time=0;this.onImpact=()=>{};this.gravity=22;this.iterations=10}
+ constructor(){this.bodies=[];this.joints=[];this.drag=null;this.time=0;this.onImpact=()=>{};this.gravity=22;this.iterations=14}
  add(b){this.bodies.push(b);return b}
  remove(b){this.bodies=this.bodies.filter(v=>v!==b)}
  joint(a,b,la,lb,cone,twist){let j={a,b,la,lb,cone,twist,baseCone:cone,baseTwist:twist};this.joints.push(j);return j}
