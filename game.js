@@ -1,4 +1,4 @@
-import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.3.0';
+import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.3.1';
 const $=id=>document.getElementById(id),show=(id,on)=>$(id).classList.toggle('hidden',!on),R=new Renderer($('viewport')),P=new Physics();
 const rad=d=>d*Math.PI/180,colors={yellow:'#ffdb39',blue:'#287ac5',green:'#73b343'},names=['头部','躯干','左臂','右臂','左腿','右腿'],caps=[6,18,5,5,7,7];
 const routes=[{name:'01 / 高台自由落体',desc:'从 16 米高台落下，挑战一次重击。',x:0,h:16},{name:'02 / 翻滚阶梯',desc:'20 级长阶梯，连续翻滚与多次碰撞。',x:-28,h:20},{name:'03 / 山谷滑坡',desc:'24 米滑坡与凸起路障，滑行后翻滚。',x:28,h:24}];
@@ -61,7 +61,7 @@ function heal(){reset(false);toast('全部治疗完成，已回到赛道起点')
 function reset(clear=true){P.drag=null;turning=null;strong=true;hero=[routes[route].x,routes[route].h,3.1];velY=0;walk=0;walkBlend=0;grounded=true;actorYaw=0;airStart=null;keys.clear();stick.x=stick.y=0;stick.id=null;$('knob').style.transform='';for(let b of dolls){b.active=false;b.v=[0,0,0];b.w=[0,0,0];b.damage=0;b.lastHit=-99}for(let j of P.joints){j.cone=j.baseCone;j.twist=j.baseTwist}round={phase:'ready',elapsed:0,still:0,score:0,maxSpeed:0,hits:0,assisted:!clear&&props.length>0};if(clear)clearProps();animatedPose(0);for(let e of effects)R.remove(e.m);effects=[];show('results',false);$('strength').className='pill enabled';$('strength').textContent='💪 力气 ON';$('launch').innerHTML='开始摔落<small>DROP TEST · F</small>';$('injuryText').textContent='完好无损';$('notice').textContent='移动探索，或点击「开始摔落」';$('routeName').textContent=routes[route].name;$('routeDesc').textContent=routes[route].desc;$('best').textContent=records[route].toLocaleString();$('impact').style.opacity=0;syncModels();updateHUD();camera(true)}
 
 // v4.2 persistent score shop: only clean completed runs award spendable points.
-const shopCatalog={bomb:{name:'炸弹',emoji:'💣',price:350},spring:{name:'弹簧',emoji:'🌀',price:220},box:{name:'木箱',emoji:'📦',price:120},ball:{name:'保龄球',emoji:'🎳',price:180},balloon:{name:'气球',emoji:'🎈',price:150}};
+const shopCatalog={bomb:{name:'炸弹',emoji:'💣',price:60000},spring:{name:'弹簧',emoji:'🌀',price:38000},box:{name:'木箱',emoji:'📦',price:12000},ball:{name:'保龄球',emoji:'🎳',price:26000},balloon:{name:'气球',emoji:'🎈',price:18000}};
 let wallet=0,unlocked=new Set(['grab']);
 try{const saved=JSON.parse(localStorage.getItem('noob-break-shop-v1')||'{}');wallet=Math.max(0,Math.floor(Number(saved.wallet)||0));if(Array.isArray(saved.unlocked))for(const k of saved.unlocked)if(k in shopCatalog)unlocked.add(k)}catch{}
 function saveShop(){try{localStorage.setItem('noob-break-shop-v1',JSON.stringify({wallet,unlocked:[...unlocked]}))}catch{}}
