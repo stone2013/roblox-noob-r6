@@ -1,14 +1,17 @@
-import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.9.2';
-import {createStructures,createVehicles,createReplay} from './features49.js?v=4.9.2';
+import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.9.3';
+import {createStructures,createVehicles,createReplay} from './features49.js?v=4.9.3';
+import {createMountain} from './mountain.js?v=4.9.3';
 const $=id=>document.getElementById(id),show=(id,on)=>$(id).classList.toggle('hidden',!on),R=new Renderer($('viewport')),P=new Physics();
 const rad=d=>d*Math.PI/180,colors={yellow:'#ffdb39',blue:'#287ac5',green:'#73b343'},names=['头部','躯干','左臂','右臂','左腿','右腿'],caps=[6,18,5,5,7,7];
-const routes=[{name:'01 / 高台自由落体',desc:'从 16 米高台落下，挑战一次重击。',x:0,h:16},{name:'02 / 翻滚阶梯',desc:'20 级长阶梯，连续翻滚与多次碰撞。',x:-28,h:20},{name:'03 / 山谷滑坡',desc:'24 米滑坡与凸起路障，滑行后翻滚。',x:28,h:24},{name:'04 / 雪山之巅',desc:'42 米雪山：悬崖、积木雪坡、岩石障碍与连续跌落。',x:55,h:42}];
+const routes=[{name:'01 / 高台自由落体',desc:'从 16 米高台落下，挑战一次重击。',x:0,h:16},{name:'02 / 翻滚阶梯',desc:'20 级长阶梯，连续翻滚与多次碰撞。',x:-28,h:20},{name:'03 / 山谷滑坡',desc:'24 米滑坡与凸起路障，滑行后翻滚。',x:28,h:24},{name:'04 / 雪山之巅',desc:'42 米高山起点：连绵山脊、峡谷、雪峰与陡崖。',x:55,h:42}];
 let route=0,strong=true,first=false,slow=false,tool='grab',entered=false,yaw=.48,pitch=.4,distance=10,actorYaw=0,hero=[0,16,3],velY=0,walk=0,walkBlend=0,moveVelocity=[0,0,0],grounded=true,airStart=null,jumpBuffer=0,coyote=0,turning=null,stick={x:0,y:0,id:null},keys=new Set(),props=[],effects=[],clouds=[],soundOn=false,audio=null,lastSound=0,impactUntil=0,toastUntil=0,frame=0,acc=0;
 let round={phase:'ready',elapsed:0,still:0,score:0,maxSpeed:0,hits:0,assisted:false},records=[0,0,0,0];try{let d=JSON.parse(localStorage.getItem('noob-break-records-v4'));if(Array.isArray(d)&&d.length>=3)records=d.slice(0,4).concat(Array(Math.max(0,4-d.length)).fill(0)).map(v=>Number.isFinite(v)?Math.max(0,v):0)}catch{}
 let seed=483;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
 function decoration(p,s,c,q=Q.id(),shape='box',cast=true){let m=R.add(p,s,c,shape,q);m.cast=cast;return m}
 function solid(p,s,c,q=Q.id(),tag='terrain'){let b=P.add(new Body(p,s,0,'box',q));b.tag=tag;b.mesh=decoration(p,s,c,q);return b}
 const ground=decoration([0,-1,-18],[360,2,360],'#82b767',Q.id(),'box',false);ground.studs=1;
+// The rendered alpine mesh and all terrain contacts share the same triangle sampler.
+const mountain=createMountain({R,P});
 // Expanded 360x360 playable world. Perimeter hills are solid, not just decoration.
 // Use fewer broad static collision blocks to keep mobile physics affordable.
 const worldLimitX=150,worldMinZ=-162,worldMaxZ=126;
@@ -90,7 +93,7 @@ function restoreTrees(){
  }
  for(let f of treeFragments)R.remove(f.m);treeFragments.length=0;
 }
-for(let i=0;i<26;i++){let x=(random()-.5)*122,z=(random()-.5)*110-20;if(Math.abs(x)<43&&z>-49&&z<13)continue;let h=2.6+random()*2;makeBreakableTree(x,z,h)}
+for(let i=0;i<26;i++){let x=(random()-.5)*122,z=(random()-.5)*110-20;if((Math.abs(x)<43&&z>-49&&z<13)||mountain.surfaceAt(x,z).height>2)continue;let h=2.6+random()*2;makeBreakableTree(x,z,h)}
 for(let i=0;i<9;i++){let x=(i-4)*20,z=-55+(i%3)*37,y=36+random()*7;let group=[];for(let k=0;k<3;k++){let m=decoration([x+k*3,y+(k===1?1.0:0),z],[5,2.0+(k===1?1.1:0),3.4],'#f4faf4',Q.id(),'box',false);group.push(m)}clouds.push(group)}
 function stripe(x,y,z,w=9){for(let i=0;i<12;i++)decoration([x-w/2+i*w/12,y,z],[w/24,.035,.6],i%2?'#344f53':'#ffd46f',Q.axis([0,1,0],-.35),'box',false)}
 for(let c of routes){let {x,h}=c;solid([x,h-.6,5],[10,1.2,8],'#e4eadf');let deck=decoration([x,h+.01,5],[9.8,.035,7.8],'#517575',Q.id(),'box',false);deck.studs=1;stripe(x,h+.04,1.4);for(let a of [-4.45,4.45]){solid([x+a,h+1,5],[.18,.22,7.5],'#d4e2db');for(let z of [2.3,5.5,8.4])solid([x+a,h+.48,z],[.16,1.1,.16],'#729ba0');solid([x+a,h/2-1,6],[.55,h-1,.55],'#aec4bd')}
@@ -99,90 +102,16 @@ for(let c of routes){let {x,h}=c;solid([x,h-.6,5],[10,1.2,8],'#e4eadf');let deck
 for(let i=0;i<20;i++){let h=19-i,z=-1-i*1.7;solid([-28,h/2,z],[8.4,h,1.7],i%2?'#b9c6c0':'#d1dacf');decoration([-28,h+.025,z+.64],[8.1,.04,.2],'#efb473',Q.id(),'box',false)}
 const slopeQ=Q.axis([1,0,0],-Math.atan2(22,34));solid([28,11.8,-16],[9,1.0,40.5],'#b8cbd0',slopeQ);for(let x of [23.35,32.65])solid([x,12.2,-16],[.4,1.1,40.5],'#799b9b',slopeQ);for(let z of [-8,-18,-28]){let y=12.4+(z+16)*22/34;solid([28,y,z],[7.8,.6,.75],'#dca373',slopeQ)}
 
-// v4.6: rugged, branching mountain massif, not a single straight ramp.
-// Collision uses the same solid boxes as visible terrain. Staggered terraces
-// form cliffs, shelves, gullies, and alternate descent paths.
+// Continuous triangulated mountain massif: ridges, saddles, gullies, steep faces and snowfields.
+// Geometry is one compact low-poly surface; Physics samples its exact render triangles.
 const mountainX=55;
-const ridge=[
-// x-offset, z, summit height, width, depth
-[0,-1,40,10,7],[1,-7,36,11,7],[-1.4,-13,34,10,7],
-[-3.2,-19,27,9,7],[-1.2,-25,25,12,7],[2.2,-31,18,11,7],
-[4.4,-37,17,9,7],[1.8,-43,10,13,7],[-1.5,-49,7,13,7],
-[0,-55,3,16,8]];
-for(let i=0;i<ridge.length;i++){
- let [off,z,top,width,depth]=ridge[i],x=mountainX+off;width*=1.22;depth*=1.10;
- // Massive rocky core with a narrow, irregular snow cap.
- solid([x,top/2,z],[width,top,depth],i%3===0?'#657e8d':i%3===1?'#7e96a4':'#91a5b1');
- decoration([x,top+.045,z],[width-.2,.09,depth-.15],i%3===0?'#f7fdff':'#dcecf4',Q.id(),'box',false);
- // Distinct cliff edges and short rocky ledges.
- if(i>1&&i<9){
-  let side=i%2?1:-1;
-  solid([x+side*(width/2+1),top-2,z],[2.2,3.8,depth*.65],'#647e8c');
-  decoration([x+side*(width/2+.4),top+.24,z],[1.3,.38,depth*.48],'#b9cbd5',Q.id(),'box',false);
- }
- // Mountain flanks broaden as elevation falls, with uneven shoulders.
- for(let side of [-1,1]){
-  let flankTop=Math.max(1,top*(.72+(i%3)*.045)),fx=x+side*(width*.5+3.4);
-  solid([fx,flankTop/2,z],[6.8,flankTop,depth+.15],i%2?'#8499a5':'#6e8796');
-  if(i%2===0)decoration([fx,flankTop+.07,z],[5.5,.15,depth-.3],'#d7e5ed',Q.id(),'box',false);
-  let outer=Math.max(.7,flankTop*.52),ox=fx+side*5.5;
-  solid([ox,outer/2,z],[5.3,outer,depth+.15],'#9caeb6');
- }
-}
-// Three separate craggy peaks: summit and two side summits.
-// Their stepped narrowing produces a recognizable jagged mountain skyline.
-const peaks=[
- {x:mountainX-18,z:-13,h:62,r:16},
- {x:mountainX+24,z:-27,h:54,r:16},
- {x:mountainX-22,z:-48,h:42,r:15}
-];
-for(let p of peaks){
- const levels=9,step=p.h/levels;
- for(let k=0;k<levels;k++){
-  let width=p.r*2*(1-k/levels)+.6,depth=width*.88,
-      cx=p.x+Math.sin(k*1.6+p.x)*.65,cz=p.z+Math.cos(k*1.2)*.45;
-  solid([cx,k*step+step/2,cz],[width,step+.12,depth],
-    k>levels*.65?'#e5f0f5':k>levels*.45?'#b9ccd6':'#728b9a');
- }
- decoration([p.x,p.h+.3,p.z],[1.8,.65,1.6],'#faffff',Q.id(),'box',false);
-}
-// Rugged terrain 2.0: oblique rock faces with matching tilted colliders.
-// Each angled slab is visible and physically solid; offset faces make the
-// massif read as a mountain instead of a straight staircase.
-for(let i=0;i<11;i++){
- const z=-3-i*5.1, x=mountainX-11+Math.sin(i*.85)*3.5;
- const y=Math.max(2,39-i*3.25);
- const angle=Q.axis([0,0,1],(i%2?-.42:.36));
- solid([x,y*.55,z],[7.5,Math.max(2,y*.9),7.0],i%3?'#718a99':'#8fa6b4',angle);
- const snow=Q.axis([0,0,1],(i%2?-.42:.36));
- decoration([x,y+.45,z],[7.3,.2,6.8],'#d9ebf1',snow,'box',false);
-}
-for(let i=0;i<10;i++){
- const z=-7-i*5.4,x=mountainX+13+Math.cos(i*.9)*4,y=Math.max(1.5,33-i*2.9);
- const angle=Q.axis([0,0,1],i%2?.38:-.34);
- solid([x,y*.52,z],[8.2,Math.max(2,y*.92),6.9],i%2?'#748d9d':'#94a9b5',angle);
- decoration([x,y+.2,z],[7.9,.18,6.5],'#e7f3f8',angle,'box',false);
-}
-// Branching ridge to the right: optional ledges to tumble across.
-for(let i=0;i<5;i++){
- let z=-18-i*7,x=mountainX+12+i*1.8,top=Math.max(3,26-i*5);
- solid([x,top/2,z],[7.2,top,7.3],i%2?'#8299a6':'#708998');
- decoration([x,top+.05,z],[7,.1,7],'#edf6f9',Q.id(),'box',false);
-}
-// Gully obstacles near the base, low enough to tumble over.
-for(let i=0;i<6;i++){
- let x=mountainX+(i-2.5)*2.8,z=-61+(i%2)*1.3;
- solid([x,.5+(i%3)*.15,z],[2.2,1+(i%3)*.3,2.0],i%2?'#839ba8':'#b0c2cc');
-}
-decoration([mountainX,1.15,-67],[18,2.3,2.2],'#9baeb9');
-decoration([mountainX,2.35,-67],[17,.12,2.0],'#f2fbff',Q.id(),'box',false);
-for(let c of routes){let z=c.x===0?-7:-40;let pad=decoration([c.x,.03,z-7],[13,.05,18],'#b8cab1',Q.id(),'box',false);pad.studs=1;for(let side of [-1,1])for(let k=0;k<4;k++){let x=c.x+side*6.8,zz=z-k*4;decoration([x,.1,zz],[.7,.2,.7],'#536e65');decoration([x,.5,zz],[.44,.8,.44],'#efa369');decoration([x,.6,zz],[.46,.14,.46],'#fff1d1')};stripe(c.x,.09,z+1,12)}
-solid([-1,1.2,-7],[5,2.4,1.2],'#ce8e65');solid([2.2,.5,-13],[2.5,1,2.4],'#d5aa73');solid([-3,.8,-18],[2.3,1.6,2.2],'#abbdaf');solid([28,1,-40],[8,2,1.5],'#d3a675');
+for(let c of routes){if(c.x===55)continue;let z=c.x===0?-7:-40;let pad=decoration([c.x,.03,z-7],[13,.05,18],'#b8cab1',Q.id(),'box',false);pad.studs=1;for(let side of [-1,1])for(let k=0;k<4;k++){let x=c.x+side*6.8,zz=z-k*4;decoration([x,.1,zz],[.7,.2,.7],'#536e65');decoration([x,.5,zz],[.44,.8,.44],'#efa369');decoration([x,.6,zz],[.46,.14,.46],'#fff1d1')};stripe(c.x,.09,z+1,12)}
+solid([-1,1.2,-7],[5,2.4,1.2],'#ce8e65');solid([2.2,.5,-13],[2.5,1,2.4],'#d5aa73');solid([-3,.8,-18],[2.3,1.6,2.2],'#abbdaf');
 
 // v4.3 scenic pass: lightweight low-poly scenery placed outside active drop lanes.
 function scenicTree(x,z,height=3.5){makeBreakableTree(x,z,height)}
 function scenicLamp(x,z){decoration([x,1.8,z],[.18,3.6,.18],'#486a72');decoration([x,3.65,z],[1.2,.16,.52],'#365766');let light=decoration([x,3.51,z],[.9,.1,.4],'#ffe7a1');light.unlit=.7}
-for(let i=0;i<30;i++){let x=(random()-.5)*112,z=-70+random()*94;if(Math.abs(x)<39&&z>-51&&z<13)continue;scenicTree(x,z,2.5+random()*2.2)}
+for(let i=0;i<30;i++){let x=(random()-.5)*112,z=-70+random()*94;if((Math.abs(x)<39&&z>-51&&z<13)||mountain.surfaceAt(x,z).height>2)continue;scenicTree(x,z,2.5+random()*2.2)}
 for(let i=0;i<12;i++){let x=-56+i*10;decoration([x,.2,19],[5,.35,3.6],i%2?'#adc9bd':'#c7d9c6');decoration([x,.4,19],[3.8,.1,2.5],'#a4c1ad')}
 for(let c of routes){let x=c.x;scenicLamp(x-3.4,9);scenicLamp(x+3.4,9);
 decoration([x,c.h+1.4,9],[4.3,1.05,.22],'#294b63');decoration([x,c.h+1.4,9.14],[3.85,.64,.07],'#e8f1d8',Q.id(),'box',false);
@@ -229,7 +158,7 @@ function toast(s){$('toast').textContent=s;toastUntil=performance.now()+2800;$('
 function ping(speed,broken){if(!soundOn||!audio||audio.state!=='running'||P.time-lastSound<.1)return;lastSound=P.time;let osc=audio.createOscillator(),gain=audio.createGain();osc.type=broken?'square':'triangle';osc.frequency.setValueAtTime(broken?240:110,audio.currentTime);osc.frequency.exponentialRampToValueAtTime(45,audio.currentTime+.065);gain.gain.setValueAtTime(Math.min(.09,speed*.003),audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.08);osc.connect(gain);gain.connect(audio.destination);osc.start();osc.stop(audio.currentTime+.09)}
 function sparks(p,count=8){for(let i=0;i<count;i++){if(effects.length>=120){R.remove(effects[0].m);effects.shift()}let m=decoration(p,[.07,.07,.07],i%2?'#fff5d8':'#ffb363',Q.id(),'box',false);m.unlit=.7;effects.push({m,v:[(random()-.5)*4,2+random()*4,(random()-.5)*4],life:.45+random()*.2})}}
 P.onImpact=c=>{const panel=c.a?.buildPanel||c.b?.buildPanel;if(panel&&c.speed>9){if(structures49.shatter(panel,c.speed)){sparks(c.p,8);toast('💥 撞碎建筑！')}}const treeBody=c.a?.tree?c.a:c.b?.tree?c.b:null;if(treeBody&&c.speed>8){shatterTree(treeBody.tree,c.speed);return}if(round.phase!=='falling'||strong)return;for(let b of [c.a,c.b]){if(!b||b.group!=='doll'||P.time-b.lastHit<.28)continue;let speed=c.speed;if(speed<5)continue;b.lastHit=P.time;let before=b.damage,old=fractures(b),gain=Math.min(100-before,Math.pow(speed-4.5,1.42)*1.22);if(gain<=.05)continue;b.damage=clamp(before+gain,0,100);let broken=fractures(b)-old,points=Math.round(gain*18+broken*240);round.score+=points;round.hits++;round.maxSpeed=Math.max(round.maxSpeed,speed);for(let j of P.joints)if(j.b===b&&b.part>=2){j.cone=j.baseCone+rad(12)*b.damage/100;j.twist=j.baseTwist+rad(20)*b.damage/100}sparks(c.p,broken?10:5);ping(speed,broken>0);$('impact').innerHTML='<strong>+ '+points+'</strong><span>'+names[b.part]+(broken?' · 骨折 +'+broken:' · 碰撞')+'</span>';impactUntil=performance.now()+780;$('impact').style.opacity=1;$('injuryText').textContent=names[b.part]+(broken?' 骨折':' 受伤');let node=document.querySelector('[data-part="'+b.part+'"]');node.classList.remove('crackflash');void node.offsetWidth;node.classList.add('crackflash')}};
-function support(x,z,ceiling){let y=0,o=[x,Math.max(.2,ceiling),z];for(let b of P.bodies){if(b.mass)continue;let t=rayBody(o,[0,-1,0],b,150);if(t!==null)y=Math.max(y,o[1]-t)}return y}
+function support(x,z,ceiling){let y=P.terrainAt?.(x,z)?.height||0,o=[x,Math.max(.2,ceiling),z];for(let b of P.bodies){if(b.mass)continue;let t=rayBody(o,[0,-1,0],b,150);if(t!==null)y=Math.max(y,o[1]-t)}return y}
 function animatedPose(dt,moving=false){let swing=Math.sin(walk)*walkBlend*.55,air=!grounded,angles=[0,0,swing,-swing,-swing,swing];if(air){angles[2]-=.35;angles[3]-=.35;angles[4]+=.12;angles[5]+=.12}let poses=layout.map((base,i)=>{let q=Q.axis([0,1,0],actorYaw),p=[...base];if(i>1){let anchor=i<4?[i===2?-.63:.63,2.7,0]:[i===4?-.32:.32,1.5,0],localQ=Q.axis([1,0,0],angles[i]);p=V.add(anchor,Q.rot(localQ,V.sub(base,anchor)));q=Q.mul(q,localQ)}return {p:Q.rot(Q.axis([0,1,0],actorYaw),p),q}});
  let minY=Math.min(...[4,5].map(i=>{let h=sizes[i].map(x=>x/2),a=angles[i];return poses[i].p[1]-Math.abs(Math.cos(a))*h[1]-Math.abs(Math.sin(a))*h[2]})),lift=grounded?.015-minY:0;
  for(let i=0;i<6;i++){let b=dolls[i],old=[...b.p],oq=[...b.q];b.p=V.add(hero,V.add(poses[i].p,[0,lift,0]));b.q=poses[i].q;b.animV=dt?V.mul(V.sub(b.p,old),1/dt):[0,0,0];b.animW=dt?V.mul(Q.delta(b.q,oq),1/dt):[0,0,0]}}
@@ -268,7 +197,7 @@ function jump(){if(!strong||pause())return;if(vehicles49.riding){const v=vehicle
 function pause(){return !$('shopPanel').classList.contains('hidden')||!entered||!$('settings').classList.contains('hidden')||!$('results').classList.contains('hidden')}
 const canvas=$('viewport');canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('pointerdown',e=>{if(pause()||turning)return;e.preventDefault();canvas.setPointerCapture(e.pointerId);let ray=R.ray(e.clientX,e.clientY);
- if(tool!=='grab'){let t=ray.d[1]<-.001?-ray.o[1]/ray.d[1]:null;for(let b of P.bodies){if(b.mass)continue;let a=rayBody(ray.o,ray.d,b,100);if(a!==null&&(t===null||a<t))t=a}if(t!==null&&t>0&&t<100)spawn(tool,V.add(ray.o,V.mul(ray.d,t)));else toast('请点击地面、平台或斜坡放置道具');return}
+ if(tool!=='grab'){let t=ray.d[1]<-.001?-ray.o[1]/ray.d[1]:null,terrainHit=mountain.raycast(ray.o,ray.d,100);if(terrainHit!==null&&(t===null||terrainHit<t))t=terrainHit;for(let b of P.bodies){if(b.mass)continue;let a=rayBody(ray.o,ray.d,b,100);if(a!==null&&(t===null||a<t))t=a}if(t!==null&&t>0&&t<100)spawn(tool,V.add(ray.o,V.mul(ray.d,t)));else toast('请点击地面、平台或斜坡放置道具');return}
  turning={id:e.pointerId,x:e.clientX,y:e.clientY,yaw,pitch}});
 canvas.addEventListener('pointermove',e=>{if(turning&&turning.id===e.pointerId){yaw=turning.yaw-(e.clientX-turning.x)*.006;pitch=clamp(turning.pitch+(e.clientY-turning.y)*.004,-1.1,1.15)}});
 function release(e){if(turning?.id===e.pointerId)turning=null;}for(let ev of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(ev,release);
@@ -285,4 +214,4 @@ $('update').onclick=async()=>{if(window.noobSW){await window.noobSW.update();toa
 window.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName))return;if(['Space','ArrowUp','ArrowDown'].includes(e.code))e.preventDefault();if(pause())return;if(strong||!['KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','Space'].includes(e.code))keys.add(e.code);if(e.repeat)return;if(e.code==='KeyR')strong?ragdoll():heal();if(e.code==='KeyC')view();if(e.code==='KeyF')launch();if(e.code==='Space'&&strong)jump()});window.addEventListener('keyup',e=>keys.delete(e.code));
 function unfocus(){keys.clear();stick.x=stick.y=0;stick.id=null;$('knob').style.transform='';P.drag=null;turning=null;acc=0}window.addEventListener('blur',unfocus);document.addEventListener('visibilitychange',unfocus);
 R.floorAt=(x,z,y)=>support(x,z,y);reset();show('loading',false);show('intro',true);let last=performance.now();function loop(t){requestAnimationFrame(loop);let dt=Math.min((t-last)/1000,.05);last=t;if(!pause()&&!document.hidden){acc+=dt*(slow?.35:1);let n=0;while(acc>=1/120&&n<6){step(1/120);acc-=1/120;n++}}syncModels();camera();R.render();if(++frame%5===0)updateHUD();if(t>impactUntil)$('impact').style.opacity=0;if(t>toastUntil)$('toast').style.opacity=0}requestAnimationFrame(loop);
-if(new URLSearchParams(location.search).has('test'))window.__LAB={P,R,dolls,routes,get round(){return round},get strong(){return strong},get hero(){return hero},get props(){return props},launch,reset,heal,spawn,view,setRoute:i=>{route=i;$('routeSelect').value=i;reset()},advance:s=>{for(let i=0;i<Math.round(s*120);i++){step(1/120);if(round.phase==='complete')break}syncModels();updateHUD();camera(true);R.render()},begin:()=>{entered=true;show('intro',false)},state:()=>({route,phase:round.phase,score:round.score,bones:totalBones(),speed:round.maxSpeed,elapsed:round.elapsed,assisted:round.assisted,strong,hero:[...hero],jointError:P.error(),bodies:dolls.map(b=>({p:b.p,q:b.q,v:b.v,damage:b.damage}))})};
+if(new URLSearchParams(location.search).has('test'))window.__LAB={P,R,dolls,routes,mountain,get round(){return round},get strong(){return strong},get hero(){return hero},get props(){return props},launch,reset,heal,spawn,view,setRoute:i=>{route=i;$('routeSelect').value=i;reset()},advance:s=>{for(let i=0;i<Math.round(s*120);i++){step(1/120);if(round.phase==='complete')break}syncModels();updateHUD();camera(true);R.render()},begin:()=>{entered=true;show('intro',false)},state:()=>({route,phase:round.phase,score:round.score,bones:totalBones(),speed:round.maxSpeed,elapsed:round.elapsed,assisted:round.assisted,strong,hero:[...hero],jointError:P.error(),bodies:dolls.map(b=>({p:b.p,q:b.q,v:b.v,damage:b.damage}))})};

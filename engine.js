@@ -25,7 +25,7 @@ function collide(a,b){if(V.len(V.sub(a.p,b.p))>a.radius+b.radius+.03)return null
  let local=Q.rot(Q.inv(b.q),V.sub(a.p,b.p)),near=local.map((x,i)=>clamp(x,-b.h[i],b.h[i])),delta=V.sub(local,near),len=V.len(delta);if(len>a.h[0])return null;let n;if(len<1e-8){let gaps=local.map((x,i)=>b.h[i]-Math.abs(x)),i=gaps.indexOf(Math.min(...gaps));n=[0,0,0];n[i]=Math.sign(local[i])||1;len=-gaps[i]}else n=V.mul(delta,1/len);n=Q.rot(b.q,n);return{n,p:V.sub(a.p,V.mul(n,a.h[0])),depth:a.h[0]-len}}
  let aa=AX.map(v=>Q.rot(a.q,v)),bb=AX.map(v=>Q.rot(b.q,v)),axes=[...aa,...bb];for(let x of aa)for(let y of bb){let z=V.cross(x,y);if(V.len(z)>.015)axes.push(V.norm(z))}let delta=V.sub(a.p,b.p),depth=1e10,normal;for(let n of axes){let ra=aa.reduce((s,v,i)=>s+Math.abs(V.dot(v,n))*a.h[i],0),rb=bb.reduce((s,v,i)=>s+Math.abs(V.dot(v,n))*b.h[i],0),dist=V.dot(delta,n),overlap=ra+rb-Math.abs(dist);if(overlap<=0)return null;if(overlap<depth){depth=overlap;normal=dist>=0?n:V.mul(n,-1)}}let p=supportPoint(a,normal,true);return{n:normal,p,depth}}
 export class Physics{
- constructor(){this.bodies=[];this.joints=[];this.drag=null;this.time=0;this.onImpact=()=>{};this.gravity=22;this.iterations=16;this.contactSlop=.003;this.lastPairCount=0}
+ constructor(){this.bodies=[];this.joints=[];this.drag=null;this.time=0;this.onImpact=()=>{};this.gravity=22;this.iterations=16;this.contactSlop=.003;this.lastPairCount=0;this.terrainAt=null}
  add(b){this.bodies.push(b);return b}
  remove(b){this.bodies=this.bodies.filter(v=>v!==b)}
  joint(a,b,la,lb,cone,twist){let j={a,b,la,lb,cone,twist,baseCone:cone,baseTwist:twist};this.joints.push(j);return j}
@@ -57,7 +57,9 @@ this.lastPairCount=pairs.length;
  for(let k=0;k<this.iterations;k++){
   for(let j of this.joints){solvePoint(j.a,j.b,j.la,j.lb);limitJoint(j)}
   if(this.drag)solvePoint(this.drag.b,null,this.drag.local,null,this.drag.target,1.8);
-  for(let a of active){let vs=a.shape==='sphere'?[V.add(a.p,[0,-a.h[0],0])]:a.vertices();for(let i=0;i<vs.length;i++)if(vs[i][1]<0)resolve(a,null,{n:[0,1,0],p:vs[i],depth:-vs[i][1]},a.id+':ground:'+i)}
+  for(let a of active){let vs=a.shape==='sphere'?[V.add(a.p,[0,-a.h[0],0])]:a.vertices();for(let i=0;i<vs.length;i++)if(vs[i][1]<0)resolve(a,null,{n:[0,1,0],p:vs[i],depth:-vs[i][1]},a.id+':ground:'+i);
+   if(this.terrainAt){if(a.shape==='sphere'){const s=this.terrainAt(a.p[0],a.p[2]);if(s&&s.height>0){const signed=(a.p[1]-s.height)*s.normal[1],depth=a.h[0]-signed;if(depth>0)resolve(a,null,{n:s.normal,p:V.sub(a.p,V.mul(s.normal,a.h[0])),depth},a.id+':terrain:sphere')}}else for(let i=0;i<vs.length;i++){const v=vs[i],s=this.terrainAt(v[0],v[2]);if(s&&s.height>v[1]&&s.normal[1]>.12){const depth=Math.min(1.2,(s.height-v[1])/s.normal[1]);resolve(a,null,{n:s.normal,p:v,depth},a.id+':terrain:'+i)}}}
+  }
   for(let [a,b] of pairs){let c=collide(a,b);if(c)resolve(a,b,c,a.id+':'+b.id)}
  }
  for(let b of active){b.v=V.mul(V.sub(b.p,b.oldP),1/dt);b.w=V.mul(Q.delta(b.q,b.oldQ),1/dt);
@@ -87,6 +89,7 @@ export class Renderer{
  for(let name of ['box','sphere','cylinder']){let data=geometry(name),buffer=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,buffer);g.bufferData(g.ARRAY_BUFFER,data,g.STATIC_DRAW);this.meshes[name]={buffer,count:data.length/6}}
  this.texture=g.createTexture();g.bindTexture(g.TEXTURE_2D,this.texture);g.texImage2D(g.TEXTURE_2D,0,g.RGBA,1024,1024,0,g.RGBA,g.UNSIGNED_BYTE,null);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MIN_FILTER,g.NEAREST);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MAG_FILTER,g.NEAREST);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_S,g.CLAMP_TO_EDGE);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_T,g.CLAMP_TO_EDGE);this.fb=g.createFramebuffer();g.bindFramebuffer(g.FRAMEBUFFER,this.fb);g.framebufferTexture2D(g.FRAMEBUFFER,g.COLOR_ATTACHMENT0,g.TEXTURE_2D,this.texture,0);let dep=g.createRenderbuffer();g.bindRenderbuffer(g.RENDERBUFFER,dep);g.renderbufferStorage(g.RENDERBUFFER,g.DEPTH_COMPONENT16,1024,1024);g.framebufferRenderbuffer(g.FRAMEBUFFER,g.DEPTH_ATTACHMENT,g.RENDERBUFFER,dep);g.bindFramebuffer(g.FRAMEBUFFER,null);g.enable(g.DEPTH_TEST);g.enable(g.CULL_FACE);g.cullFace(g.BACK);this.resize();window.addEventListener('resize',()=>this.resize())}
  add(p,size,color,shape='box',q=Q.id()){let item={p:[...p],s:[...size],q:[...q],c:typeof color==='string'?color.match(/\w\w/g).map(x=>parseInt(x,16)/255):color,shape,visible:true,cast:true,studs:0,unlit:0};this.items.push(item);return item}
+ registerMesh(name,data){let g=this.g,buffer=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,buffer);g.bufferData(g.ARRAY_BUFFER,data,g.STATIC_DRAW);this.meshes[name]={buffer,count:data.length/6}}
  remove(item){this.items=this.items.filter(x=>x!==item)}
  resize(){let d=Math.min(window.devicePixelRatio||1,this.quality?1.5:1);this.canvas.width=Math.round(innerWidth*d);this.canvas.height=Math.round(innerHeight*d);this.aspect=innerWidth/innerHeight}
  ray(x,y){let f=V.norm(V.sub(this.target,this.eye)),right=V.norm(V.cross(f,[0,1,0])),up=V.cross(right,f),t=Math.tan(this.fov/2);return {o:this.eye,d:V.norm(V.add(f,V.add(V.mul(right,(x/innerWidth*2-1)*t*this.aspect),V.mul(up,(1-y/innerHeight*2)*t))))}}
@@ -98,6 +101,7 @@ export class Renderer{
 class CanvasRenderer{
  constructor(canvas){this.canvas=canvas;this.ctx=canvas.getContext('2d');if(!this.ctx)throw Error('无法创建画布');this.items=[];this.eye=[10,20,20];this.target=[0,0,0];this.fov=Math.PI/3;this.quality=true;this.compatibility=true;this.resize();window.addEventListener('resize',()=>this.resize());this.shapes={};for(let name of ['box','sphere','cylinder']){let data=geometry(name),ts=[];for(let i=0;i<data.length;i+=18)ts.push({p:[[...data.slice(i,i+3)],[...data.slice(i+6,i+9)],[...data.slice(i+12,i+15)]],n:[...data.slice(i+3,i+6)]});this.shapes[name]=ts}}
  add(...args){return Renderer.prototype.add.apply(this,args)}
+ registerMesh(name,data){let tris=[];for(let i=0;i<data.length;i+=18)tris.push({p:[[...data.slice(i,i+3)],[...data.slice(i+6,i+9)],[...data.slice(i+12,i+15)]],n:[...data.slice(i+3,i+6)]});this.shapes[name]=tris}
  remove(item){this.items=this.items.filter(x=>x!==item)}
  resize(){let d=Math.min(1,(this.quality?1000:700)/innerWidth,(this.quality?650:420)/innerHeight);this.canvas.width=Math.round(innerWidth*d);this.canvas.height=Math.round(innerHeight*d);this.aspect=innerWidth/innerHeight;this.image=this.ctx.createImageData(this.canvas.width,this.canvas.height);this.depth=new Float32Array(this.canvas.width*this.canvas.height)}
  ray(x,y){return Renderer.prototype.ray.call(this,x,y)}
