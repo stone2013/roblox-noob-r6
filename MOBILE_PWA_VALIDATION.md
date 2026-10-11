@@ -61,3 +61,9 @@ BROWSER=webkit npm run test:browser
 - 不同设备 DPR、触摸延迟、音效解锁、画质、持续运行性能。
 
 真机结果和 CI 状态必须独立记录；本报告不把尚未执行的检查记为通过。
+
+## CI 首轮与 WebKit 离线复核
+
+首轮 CI：[38142302997](https://github.com/stone2013/roblox-noob-r6/actions/runs/38142302997)。Chromium 151.0.7922.34 的 21 组检查和地形回归通过；WebKit 26.5 的 12 组界面、商店、回放、安全区域检查通过，但 `context.setOffline(true)` 后新页面导航报告引擎 internal error。尚不能把这一结果归因为应用或测试环境。
+
+复核测试保留此失败记录，在 WebKit 中改用源站拒绝所有连接，并用独立 fetch 失败作负对照；新页面仍须从 Service Worker 缓存启动。此方式验证网络不可达时的缓存回退，`navigator.onLine` 仍为 true，不等同于 iPhone 系统断网或主屏幕应用冷启动。Chromium 仍使用浏览器离线模拟。复核 CI 状态须以对应 Actions 实际结果为准。
