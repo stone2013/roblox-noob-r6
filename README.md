@@ -28,7 +28,8 @@ WASD 移动/驾驶；Shift 奔跑；空格跳跃或从矿车弹射；R 切换力
 
 ## v4.9.4 移动端验收修订
 - 修复暂停窗口打开后摇杆方向残留、紧凑横屏安全区域被覆盖、短屏弹窗越界。
-- 同步 PWA 启动地址，缓存修订名为 `v4.9.4-mobile1`。
+- 同步 PWA 启动地址，缓存修订名为 `v4.9.4-mobile2`。
 - `npm test`：11 项地形检查；`npm run test:browser`：21 组 Chromium 冒烟检查。
 - 已配置 Chromium/WebKit CI；本地 WebKit 未运行，不能据此宣称 Safari 兼容性已经通过。
 - 详细环境、验证方法与真机待验项目见 [MOBILE_PWA_VALIDATION.md](./MOBILE_PWA_VALIDATION.md)。
+- 离线时自动/手动检查 Service Worker 更新的失败已处理，避免未捕获错误。

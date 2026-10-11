@@ -207,6 +207,6 @@ button:active{transform:scale(.94)}
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
 let had=!!navigator.serviceWorker.controller,reloading=false;
 navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!reloading){reloading=true;location.reload()}});
-window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(r=>{window.noobSW=r;r.update();return navigator.serviceWorker.ready}).then(()=>{document.getElementById('offlineState').textContent='PWA 已就绪：资源缓存完成后可离线游玩。'}).catch(()=>{document.getElementById('offlineState').textContent='离线缓存未就绪；当前仍可在线游玩。'}));
+window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(r=>{window.noobSW=r;r.update().catch(()=>{});return navigator.serviceWorker.ready}).then(()=>{document.getElementById('offlineState').textContent='PWA 已就绪：资源缓存完成后可离线游玩。'}).catch(()=>{document.getElementById('offlineState').textContent='离线缓存未就绪；当前仍可在线游玩。'}));
 }
 </script></body></html>
