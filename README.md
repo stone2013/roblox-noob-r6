@@ -33,3 +33,4 @@ WASD 移动/驾驶；Shift 奔跑；空格跳跃或从矿车弹射；R 切换力
 - 已配置 Chromium/WebKit CI；本地 WebKit 未运行，不能据此宣称 Safari 兼容性已经通过。
 - 详细环境、验证方法与真机待验项目见 [MOBILE_PWA_VALIDATION.md](./MOBILE_PWA_VALIDATION.md)。
 - 离线时自动/手动检查 Service Worker 更新的失败已处理，避免未捕获错误。
+- 最终 CI（源码 `c9a8cf8`）：Chromium 21 组、WebKit 13 组均通过；WebKit 离线采用源站拒绝连接方式，真实手机系统断网仍待验。

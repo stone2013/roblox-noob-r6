@@ -69,3 +69,12 @@ BROWSER=webkit npm run test:browser
 复核测试保留此失败记录，在 WebKit 中改用源站拒绝所有连接，并用独立 fetch 失败作负对照；新页面仍须从 Service Worker 缓存启动。此方式验证网络不可达时的缓存回退，`navigator.onLine` 仍为 true，不等同于 iPhone 系统断网或主屏幕应用冷启动。Chromium 仍使用浏览器离线模拟。复核 CI 状态须以对应 Actions 实际结果为准。
 
 源站不可达的本地复核另发现启动脚本自动 `registration.update()` 的拒绝未处理；这会在离线启动时产生未捕获错误。现已处理自动更新失败，并为设置页手动更新失败显示联网重试提示。缓存修订进一步提升到 `mobile2`。本地 Chromium 在源站拒绝连接时已能从缓存启动并完成雪山结算；后续 CI 将检查 WebKit 相同流程。
+
+## 最终结果
+
+验证源码提交：`c9a8cf8a0837ec219892e4cf3b7a28eb0c51f82b`。
+
+- [最终浏览器 CI 38142776114](https://github.com/stone2013/roblox-noob-r6/actions/runs/38142776114)：Chromium 和 WebKit 两个任务均成功；Chromium 21 组、WebKit 13 组，两个任务的 11 项地形检查均通过。
+- [Pages 部署 38142775918](https://github.com/stone2013/roblox-noob-r6/actions/runs/38142775918)：成功；线上 `sw.js` 已核对为 `mobile2` 修订。
+- WebKit 的通过结果包括源站拒绝连接后的新页面缓存启动、手动更新失败处理、雪山和摔落结算；并未把 `setOffline(true)` 冷导航内部错误改记为通过。
+- 所有真机待验项目仍未完成。以上 CI 证据针对该源码提交，后续纯文档记录更新不改变游戏或测试代码。
