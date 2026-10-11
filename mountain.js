@@ -1,8 +1,10 @@
 /* Continuous, shared snow mountain surface for Break Lab. */
-import {V,Q} from './engine.js?v=4.9.3';
+import {V,Q} from './engine.js?v=4.9.4';
 
 const BOUNDS={minX:8,maxX:102,minZ:-104,maxZ:30};
 const COLS=32,ROWS=44;
+// Keep all triangles touching the launch slab below its underside.
+const START={x:55,z:5,height:42,width:10,depth:8,thickness:1.2};
 const peaks=[
  {x:55,z:2,h:33,sx:19,sz:23},
  {x:37,z:-17,h:43,sx:15,sz:19},
@@ -39,13 +41,16 @@ function rawHeight(x,z){
 const dx=(BOUNDS.maxX-BOUNDS.minX)/COLS,dz=(BOUNDS.maxZ-BOUNDS.minZ)/ROWS;
 const heights=Array.from({length:(ROWS+1)*(COLS+1)},(_,k)=>{
  const row=Math.floor(k/(COLS+1)),col=k%(COLS+1);
- return rawHeight(BOUNDS.minX+col*dx,BOUNDS.minZ+row*dz);
+ const x=BOUNDS.minX+col*dx,z=BOUNDS.minZ+row*dz;
+ // A full cell margin covers every triangle intersecting the slab footprint.
+ const distance=Math.hypot(Math.max(0,Math.abs(x-START.x)-START.width/2-dx),Math.max(0,Math.abs(z-START.z)-START.depth/2-dz));
+ return Math.min(rawHeight(x,z),START.height-START.thickness-.2+distance);
 });
 const at=(row,col)=>heights[row*(COLS+1)+col];
 function surfaceAt(x,z){
  if(x<BOUNDS.minX||x>BOUNDS.maxX||z<BOUNDS.minZ||z>BOUNDS.maxZ)return {height:0,normal:[0,1,0]};
  const gx=Math.min(COLS,Math.max(0,(x-BOUNDS.minX)/dx)),gz=Math.min(ROWS,Math.max(0,(z-BOUNDS.minZ)/dz));
- const c=Math.floor(gx),r=Math.floor(gz),fx=gx-c,fz=gz-r,h00=at(r,c),h10=at(r,c+1),h01=at(r+1,c),h11=at(r+1,c+1);
+ const c=Math.min(COLS-1,Math.floor(gx)),r=Math.min(ROWS-1,Math.floor(gz)),fx=gx-c,fz=gz-r,h00=at(r,c),h10=at(r,c+1),h01=at(r+1,c),h11=at(r+1,c+1);
  let tri,point;
  if(fx+fz<=1){tri=[[0,h00,0],[dx,h10,0],[0,h01,dz]];point=[fx*dx,h00+fx*(h10-h00)+fz*(h01-h00),fz*dz]}
  else{tri=[[dx,h10,0],[0,h01,dz],[dx,h11,dz]];point=[fx*dx,h10*(1-fz)+h01*(1-fx)+h11*(fx+fz-1),fz*dz]}
@@ -85,4 +90,4 @@ function createMountain({R,P}){
  P.terrainAt=surfaceAt;
  return {surfaceAt,raycast,bounds:BOUNDS,triangleCount:buffers.rock.length/18+buffers.snow.length/18+buffers.shadow.length/18};
 }
-export {createMountain,surfaceAt,raycast,BOUNDS};
+export {createMountain,surfaceAt,raycast,BOUNDS,START};

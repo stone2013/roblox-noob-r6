@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
+import vm from 'node:vm';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 
@@ -9,9 +10,9 @@ const temp=await fs.mkdtemp(path.join(os.tmpdir(),'breaklab-mountain-'));
 const engine=await fs.readFile(path.join(root,'engine.js'),'utf8');
 const mountainSource=await fs.readFile(path.join(root,'mountain.js'),'utf8');
 await fs.writeFile(path.join(temp,'engine.mjs'),engine);
-await fs.writeFile(path.join(temp,'mountain.mjs'),mountainSource.replace("./engine.js?v=4.9.3","./engine.mjs"));
-const {V,Body,Physics}=await import(pathToFileURL(path.join(temp,'engine.mjs')));
-const {createMountain,surfaceAt,raycast}=await import(pathToFileURL(path.join(temp,'mountain.mjs')));
+await fs.writeFile(path.join(temp,'mountain.mjs'),mountainSource.replace("./engine.js?v=4.9.4","./engine.mjs"));
+const {V,Body,Physics,rayBody}=await import(pathToFileURL(path.join(temp,'engine.mjs')));
+const {createMountain,surfaceAt,raycast,BOUNDS,START}=await import(pathToFileURL(path.join(temp,'mountain.mjs')));
 
 const checks=[];
 function check(name,fn){fn();checks.push(name)}
@@ -75,5 +76,55 @@ check('fast cart-sized body follows terrain and stays below the speed cap',()=>{
  assertNoPenetration(cart,.8);
 });
 
+check('all four edges and corners have finite unit normals and continuous limits',()=>{
+ const {minX,maxX,minZ,maxZ}=BOUNDS;
+ const points=[];
+ for(let i=0;i<=200;i++){const t=i/200;points.push([minX,minZ+t*(maxZ-minZ)],[maxX,minZ+t*(maxZ-minZ)],[minX+t*(maxX-minX),minZ],[minX+t*(maxX-minX),maxZ])}
+ points.push([55,30]);
+ for(const [x,z] of points){const s=surfaceAt(x,z);assert(Number.isFinite(s.height));assert(s.normal.every(Number.isFinite));assert(Math.abs(V.len(s.normal)-1)<1e-8);
+ const inside=surfaceAt(Math.max(minX+1e-7,Math.min(maxX-1e-7,x)),Math.max(minZ+1e-7,Math.min(maxZ-1e-7,z)));
+ assert(Math.abs(s.height-inside.height)<1e-5)}
+});
+check('entire start slab footprint clears the rendered and physical mountain',()=>{
+ for(let x=50;x<=60;x+=.1)for(let z=1;z<=9;z+=.1)assert(surfaceAt(x,z).height<=START.height-START.thickness-.19);
+ assert.equal(START.height,42);assert.equal(START.x,55);
+});
+const game=await fs.readFile(path.join(root,'game.js'),'utf8');
+const supportSource=game.slice(game.indexOf('function support('),game.indexOf('function animatedPose('));
+const controlsSource=game.slice(game.indexOf('function controls('),game.indexOf('function ragdoll('));
+check('actual walking controls stay on the start slab, jump and land',()=>{
+ const p=new Physics();p.terrainAt=surfaceAt;p.add(new Body([55,41.4,5],[10,1.2,8],0));
+ const c={P:p,V,rayBody,clamp:(x,a,b)=>Math.max(a,Math.min(b,x)),hero:[55,42,3.1],velY:0,grounded:true,strong:true,jumpBuffer:0,coyote:0,airStart:null,keys:new Set(),stick:{x:0,y:0},yaw:0,actorYaw:0,walk:0,walkBlend:0,breakableTrees:[],animatedPose:()=>{},ragdoll:()=>{throw Error('unexpected ragdoll')},shatterTree:()=>{}};
+ vm.createContext(c);vm.runInContext(supportSource+controlsSource,c);
+ for(let i=0;i<120;i++)c.controls(1/120);
+ assert(Math.abs(c.hero[1]-42)<1e-8);assert(c.grounded);
+ c.keys.add('KeyD');for(let i=0;i<24;i++)c.controls(1/120);c.keys.clear();assert(c.hero[0]>56);assert.equal(c.hero[1],42);
+ c.jumpBuffer=.18;for(let i=0;i<18;i++)c.controls(1/120);assert(c.hero[1]>43);assert(!c.grounded);
+ for(let i=0;i<150;i++)c.controls(1/120);assert.equal(c.hero[1],42);assert(c.grounded);
+});
+const features=await fs.readFile(path.join(root,'features49.js'),'utf8');
+await fs.writeFile(path.join(temp,'features.mjs'),features.replace('./engine.js?v=4.9.4','./engine.mjs'));
+const {createVehicles}=await import(pathToFileURL(path.join(temp,'features.mjs')));
+check('platform ragdoll and actual cart spawn settle without an ejection',()=>{
+ for(const kind of ['ragdoll','cart']){
+  const p=new Physics();p.terrainAt=surfaceAt;p.add(new Body([55,41.4,5],[10,1.2,8],0));
+  const bodies=kind==='cart'?[createVehicles({P:p,R:{remove:()=>{}},decoration:()=>({})}).spawn([55,42,5]).b]:Array.from({length:6},(_,i)=>p.add(new Body([54+(i%3)*.8,42.5+Math.floor(i/3),5],[.6,.7,.6],1.6)));
+  let maxSpeed=0;
+  for(let i=0;i<480;i++){p.step(1/120);for(const b of bodies){assert(b.p.every(Number.isFinite));maxSpeed=Math.max(maxSpeed,V.len(b.v));assertNoPenetration(b,.1)}}
+  assert(maxSpeed<10,'unexpected launch speed '+maxSpeed);
+  for(const b of bodies)assert(b.p[1]>42&&b.p[1]<43.2&&V.len(b.v)<.5,'did not settle on platform '+kind+' '+JSON.stringify(b.p));
+ }
+});
+
+check('actual cart spawn clears the start platform and uphill terrain',()=>{
+ for(const hero of [[55,42,3.1],[37,surfaceAt(37,-17).height,-17],[60,surfaceAt(60,-69).height,-69]]){
+ const p=new Physics();p.terrainAt=surfaceAt;p.add(new Body([55,41.4,5],[10,1.2,8],0));
+ const vehicles=createVehicles({P:p,R:{remove:()=>{}},decoration:()=>({})});
+ const c={P:p,V,rayBody,hero,yaw:.48,vehicles49:vehicles,assisted:()=>{},toast:()=>{}};vm.createContext(c);
+ vm.runInContext(supportSource+game.slice(game.indexOf('function vehicleSpawn49('),game.indexOf('function vehicleToggle49(')),c);c.vehicleSpawn49();
+ const b=vehicles.vehicles[0].b;
+ for(let x=-1.05;x<=1.05;x+=.15)for(let z=-1.55;z<=1.55;z+=.15)assert(b.p[1]-.3>=surfaceAt(b.p[0]+x,b.p[2]+z).height,'cart spawned inside slope');
+ }
+});
 console.log('Mountain regressions passed: '+checks.length+' checks; '+mountain.triangleCount+' rendered triangles.');
 await fs.rm(temp,{recursive:true,force:true});

@@ -1,9 +1,9 @@
-import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.9.3';
-import {createStructures,createVehicles,createReplay} from './features49.js?v=4.9.3';
-import {createMountain} from './mountain.js?v=4.9.3';
+import {V,Q,clamp,Body,Physics,Renderer,rayBody} from './engine.js?v=4.9.4';
+import {createStructures,createVehicles,createReplay} from './features49.js?v=4.9.4';
+import {createMountain,START} from './mountain.js?v=4.9.4';
 const $=id=>document.getElementById(id),show=(id,on)=>$(id).classList.toggle('hidden',!on),R=new Renderer($('viewport')),P=new Physics();
 const rad=d=>d*Math.PI/180,colors={yellow:'#ffdb39',blue:'#287ac5',green:'#73b343'},names=['头部','躯干','左臂','右臂','左腿','右腿'],caps=[6,18,5,5,7,7];
-const routes=[{name:'01 / 高台自由落体',desc:'从 16 米高台落下，挑战一次重击。',x:0,h:16},{name:'02 / 翻滚阶梯',desc:'20 级长阶梯，连续翻滚与多次碰撞。',x:-28,h:20},{name:'03 / 山谷滑坡',desc:'24 米滑坡与凸起路障，滑行后翻滚。',x:28,h:24},{name:'04 / 雪山之巅',desc:'42 米高山起点：连绵山脊、峡谷、雪峰与陡崖。',x:55,h:42}];
+const routes=[{name:'01 / 高台自由落体',desc:'从 16 米高台落下，挑战一次重击。',x:0,h:16},{name:'02 / 翻滚阶梯',desc:'20 级长阶梯，连续翻滚与多次碰撞。',x:-28,h:20},{name:'03 / 山谷滑坡',desc:'24 米滑坡与凸起路障，滑行后翻滚。',x:28,h:24},{name:'04 / 雪山之巅',desc:'42 米高山起点：连绵山脊、峡谷、雪峰与陡崖。',x:START.x,h:START.height}];
 let route=0,strong=true,first=false,slow=false,tool='grab',entered=false,yaw=.48,pitch=.4,distance=10,actorYaw=0,hero=[0,16,3],velY=0,walk=0,walkBlend=0,moveVelocity=[0,0,0],grounded=true,airStart=null,jumpBuffer=0,coyote=0,turning=null,stick={x:0,y:0,id:null},keys=new Set(),props=[],effects=[],clouds=[],soundOn=false,audio=null,lastSound=0,impactUntil=0,toastUntil=0,frame=0,acc=0;
 let round={phase:'ready',elapsed:0,still:0,score:0,maxSpeed:0,hits:0,assisted:false},records=[0,0,0,0];try{let d=JSON.parse(localStorage.getItem('noob-break-records-v4'));if(Array.isArray(d)&&d.length>=3)records=d.slice(0,4).concat(Array(Math.max(0,4-d.length)).fill(0)).map(v=>Number.isFinite(v)?Math.max(0,v):0)}catch{}
 let seed=483;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
@@ -135,7 +135,10 @@ for(let i=0;i<6;i++){for(let k=0;k<3;k++)for(let side of [-1,1])detail(i,[(k-1)*
 const structures49=createStructures({solid,decoration,P,R,random});
 const vehicles49=createVehicles({P,R,decoration});
 const replay49=createReplay({dolls});
-function vehicleSpawn49(){assisted();let p=[hero[0]+Math.sin(yaw)*3,Math.max(1,hero[1]),hero[2]-Math.cos(yaw)*3];vehicles49.spawn(p);toast('🛒 已生成物理矿车；靠近后可乘坐')}
+function vehicleSpawn49(){assisted();let p=[hero[0]+Math.sin(yaw)*3,Math.max(1,hero[1]),hero[2]-Math.cos(yaw)*3];
+ // Clear the full chassis footprint before enabling physics, including slopes.
+ for(const x of [-1.05,0,1.05])for(const z of [-1.55,0,1.55])p[1]=Math.max(p[1],support(p[0]+x,p[2]+z,150));
+ vehicles49.spawn(p);toast('🛒 已生成物理矿车；靠近后可乘坐')}
 function vehicleToggle49(){
  if(vehicles49.riding){let v=vehicles49.dismount();hero=[v.b.p[0]+2,Math.max(0,v.b.p[1]),v.b.p[2]];toast('已下车');return}
  let near=vehicles49.vehicles.reduce((best,v)=>V.len(V.sub(v.b.p,dolls[1].p))<(best?.distance??6)?{v,distance:V.len(V.sub(v.b.p,dolls[1].p))}:best,null);
